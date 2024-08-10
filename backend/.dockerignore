@@ -1,0 +1,14 @@
+**/.git
+**/.gitignore
+**/.vscode
+**/coverage
+**/.aws
+**/.ssh
+**/.DS_Store
+**/venv
+**/__pycache__
+**/.env
+Dockerfile
+README.md
+LICENSE.md
+dumpfile.sql

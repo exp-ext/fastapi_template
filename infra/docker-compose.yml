@@ -1,0 +1,116 @@
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: template_db
+    restart: unless-stopped
+    volumes:
+      - prod_psgsql_volume:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+    env_file:
+      - ./.env
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: template_pgadmin
+    restart: on-failure
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.ru
+      PGADMIN_DEFAULT_PASSWORD: admin_password
+    ports:
+      - 8090:80
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin/
+    depends_on:
+      - db
+
+  redis:
+    image: redis:latest
+    container_name: template_redis
+    restart: always
+    command: >
+      --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    env_file:
+      - ./.env
+
+  rabbitmq:
+    image: rabbitmq:management-alpine
+    container_name: template_rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    env_file:
+      - ./.env
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/:rw
+
+  celery:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: template_celery
+    restart: always
+    command: ./src/conf/celery_entrypoint.sh
+    env_file:
+      - ./.env
+    depends_on:
+      - db
+      - redis
+      - rabbitmq
+
+  celery-beat:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: template_celery-beat
+    restart: always
+    command: ./src/conf/celery-beat_entrypoint.sh
+    mem_limit: 1g
+    cpus: "1.0"
+    env_file:
+      - ./.env
+    depends_on:
+      - db
+      - redis
+      - rabbitmq
+
+  flower:
+    image: mher/flower
+    environment:
+      - CELERY_BROKER_URL=amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672//
+      - FLOWER_PORT=5555
+    ports:
+      - "5555:5555"
+    depends_on:
+      - celery
+      - redis
+      - rabbitmq
+
+  minio:
+    image: minio/minio:latest
+    restart: always
+    command: server --console-address ":9001" /data
+    ports:
+      - '9000:9000'
+      - '9090:9001'
+    volumes:
+      - minio_volume:/data
+    env_file:
+      - ./.env
+
+  nginx:
+    image: nginx:latest
+    container_name: template_nginx
+    volumes:
+      - ./nginx/default_dev.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+    network_mode: host
+
+volumes:
+  prod_psgsql_volume:
+  pgadmin_data:
+  rabbitmq_data:
+  minio_volume:
