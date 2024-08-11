@@ -5,13 +5,13 @@ from typing import List, Type
 import filetype
 from botocore.exceptions import ClientError
 from fastapi import HTTPException, UploadFile
-from PIL import Image
-from src.conf import S3BaseClient
+from PIL import Image, UnidentifiedImageError
+from src.conf.s3_client import S3AsyncClient
 
 
 class S3Manager:
 
-    def __init__(self, storage: Type[S3BaseClient]):
+    def __init__(self, storage: Type[S3AsyncClient]):
         self.storage = storage
 
     def _prepare_path(self, path: str) -> str:
@@ -78,10 +78,14 @@ class S3Manager:
         Возвращает:
         - `tuple[bytes, str]`: Кортеж, содержащий преобразованное содержимое и MIME-тип.
         """
-        image = Image.open(io.BytesIO(file_content))
-        output = io.BytesIO()
-        image.save(output, format="WEBP")
-        return output.getvalue(), "image/webp"
+        try:
+            image = Image.open(io.BytesIO(file_content))
+            image.verify()
+            output = io.BytesIO()
+            image.save(output, format="WEBP")
+            return output.getvalue(), "image/webp"
+        except UnidentifiedImageError as e:
+            raise HTTPException(status_code=400, detail="Invalid image file") from e
 
     async def _check_and_delete_object(self, s3_client, key: str) -> None:
         """
@@ -115,7 +119,7 @@ class S3Manager:
         """
         async with self.storage.client as s3_client:
             protocol = "https" if self.storage.use_ssl else "http"
-            if self.storage.custom_domain:
+            if hasattr(self.storage, 'custom_domain') and self.storage.custom_domain:
                 return f"{protocol}://{self.storage.custom_domain}/{key}"
             if self.storage.default_acl == 'public-read':
                 return f"{protocol}://{self.storage.endpoint_domain}/{self.storage.bucket_name}/{key}"

@@ -147,7 +147,6 @@ dmypy.json
 .mypy_cache
 
 # папки с дампами и медиа
-media/
 backup/
 
 # cert

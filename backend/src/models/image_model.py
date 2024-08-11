@@ -21,7 +21,6 @@ class Image(Base):
         """Возвращает фактический URL файла, хранящегося в S3."""
         if not self.file:
             return ""
-
         s3_manager = S3Manager(storage=media_storage)
         file_url = await s3_manager.get_url(self.file)
         return file_url

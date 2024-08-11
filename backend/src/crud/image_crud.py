@@ -15,7 +15,7 @@ class ImageDAO(GenericCRUD[Image, ImageCreate, ImageUpdate]):
 
     async def get(self, *, id: UUID | str, db_session: AsyncSession | None = None) -> ImageDAOResponse | None:
         db_obj = await super().get(id=id, db_session=db_session)
-        url = db_obj.get_url()
+        url = await db_obj.get_url()
         return ImageDAOResponse(image=db_obj, url=url)
 
     async def create_with_file(
