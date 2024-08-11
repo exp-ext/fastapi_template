@@ -42,7 +42,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
     async def save_user_image(self, file: UploadFile, is_main: bool) -> Image:
         image = await image_dao.create_with_file(
-            file=file, is_main=is_main, model_instance=self.user, related_model=Image, path=self.image_path, db_session=self.db_session
+            file=file, is_main=is_main, model_instance=self.user, path=self.image_path, db_session=self.db_session
         )
         return image
 
@@ -57,7 +57,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
     async def save_user_image_with_upload_url(self, file_name: str, is_main: bool) -> str:
         image_dao_resp = await image_dao.create_without_file(
-            is_main=is_main, file_name=file_name, model_instance=self.user, related_model=Image, path=self.image_path, db_session=self.db_session
+            is_main=is_main, file_name=file_name, model_instance=self.user, path=self.image_path, db_session=self.db_session
         )
         return image_dao_resp
 

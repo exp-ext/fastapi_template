@@ -80,12 +80,14 @@ class S3Manager:
         """
         try:
             image = Image.open(io.BytesIO(file_content))
-            image.verify()
+            image.load()
             output = io.BytesIO()
             image.save(output, format="WEBP")
             return output.getvalue(), "image/webp"
-        except UnidentifiedImageError as e:
-            raise HTTPException(status_code=400, detail="Invalid image file") from e
+        except UnidentifiedImageError:
+            raise HTTPException(status_code=400, detail="Invalid image file")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail="An error occurred while processing the image") from e
 
     async def _check_and_delete_object(self, s3_client, key: str) -> None:
         """
@@ -175,13 +177,14 @@ class S3Manager:
             except ClientError as e:
                 raise HTTPException(status_code=500, detail="Error connecting to S3 or retrieving objects") from e
 
-    async def put_object(self, file: UploadFile, path: str = "") -> str:
+    async def put_object(self, file: UploadFile, path: str = "", file_type: str = "image") -> str:
         """
         Асинхронно загружает файл в S3 бакет и возвращает ключ (имя) объекта в хранилище.
 
         Аргументы:
         - file (`UploadFile`): Загружаемый файл.
         - path (`str`, optional): Путь в бакете для размещения файла. По умолчанию "".
+        - file_type (`str`, optional): Тип файла. По умолчанию "image".
 
         Возвращает:
         - `str`: Ключ (имя) объекта в S3.
@@ -193,7 +196,9 @@ class S3Manager:
             kind = filetype.guess(file_content)
             is_image = kind is not None and kind.mime.startswith("image")
 
-            if is_image:
+            if file_type == "image":
+                if not is_image:
+                    raise HTTPException(status_code=400, detail="Invalid image file")
                 file_content, content_type = self._convert_to_webp(file_content)
                 file_name = os.path.splitext(file_name)[0] + ".webp"
             else:
@@ -214,7 +219,7 @@ class S3Manager:
 
             return key
 
-    async def update_object(self, file: UploadFile, old_key: str, path: str = "") -> str:
+    async def update_object(self, file: UploadFile, old_key: str, path: str = "", file_type: str = "image") -> str:
         """
         Обновляет существующий объект в S3, удаляя старый и загружая новый файл.
 
@@ -222,6 +227,7 @@ class S3Manager:
         - file (`UploadFile`): Новый файл для загрузки.
         - old_key (`str`): Старый ключ объекта для удаления.
         - path (`str`, optional): Путь в бакете для размещения файла. По умолчанию "".
+        - file_type (`str`, optional): Тип файла. По умолчанию "image".
 
         Возвращает:
         - `str`: Ключ (имя) нового объекта в S3.
@@ -230,7 +236,7 @@ class S3Manager:
             await self._check_and_delete_object(s3_client, old_key)
 
             path = self._prepare_path(path)
-            new_key = await self.put_object(file, path)
+            new_key = await self.put_object(file, path, file_type)
             return new_key
 
     async def generate_upload_url(self, file_name: str, expiration: int = 3600, path: str = "") -> str:

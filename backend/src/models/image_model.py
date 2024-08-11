@@ -17,10 +17,14 @@ class Image(Base):
     def __repr__(self):
         return f"<Media(id={self.id}, file={self.file}, is_main={self.is_main})>"
 
+    @classmethod
+    def storage(cls):
+        return media_storage
+
     async def get_url(self) -> str:
         """Возвращает фактический URL файла, хранящегося в S3."""
         if not self.file:
             return ""
-        s3_manager = S3Manager(storage=media_storage)
+        s3_manager = S3Manager(storage=self.storage())
         file_url = await s3_manager.get_url(self.file)
         return file_url

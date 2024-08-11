@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Web3Easy</title>
-  {% block head %} {% endblock %}
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  {% block style %}{% endblock %}
+  <title>{% block title %}{% endblock %}</title>
 </head>
 <body>
-    {% block content %}
-    {% endblock %}
+  {% block body %}{% endblock %}
+  {% block script %}{% endblock %}
 </body>
-  {% block javascript %}
-  {% endblock %}
 </html>

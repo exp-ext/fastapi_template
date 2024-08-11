@@ -9,7 +9,8 @@ from typing import Type
 import aiofiles
 import typer
 from dotenv import load_dotenv
-from src.conf import S3BaseClient, database_storage, settings
+from src.conf import database_storage, settings
+from src.conf.s3_client import S3AsyncClient
 
 load_dotenv()
 
@@ -19,7 +20,7 @@ logger = logging.getLogger()
 
 
 class S3DBManager:
-    def __init__(self, storage: Type[S3BaseClient]):
+    def __init__(self, storage: Type[S3AsyncClient]):
         self.storage = storage
         self.prefix = "backup/"
 
