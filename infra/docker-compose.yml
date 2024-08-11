@@ -1,10 +1,10 @@
 services:
   db:
-    image: postgres:14-alpine
+    image: postgres:16-alpine
     container_name: template_db
     restart: unless-stopped
     volumes:
-      - prod_psgsql_volume:/var/lib/postgresql/data/
+      - template_psgsql_volume:/var/lib/postgresql/data/
     ports:
       - "5432:5432"
     env_file:
@@ -45,6 +45,11 @@ services:
       - ./.env
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq/:rw
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   celery:
     build:
@@ -52,13 +57,12 @@ services:
       dockerfile: Dockerfile
     container_name: template_celery
     restart: always
-    command: ./src/conf/celery_entrypoint.sh
+    command: ./src/conf/entrypoints/celery.sh
     env_file:
       - ./.env
     depends_on:
-      - db
-      - redis
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
 
   celery-beat:
     build:
@@ -66,27 +70,27 @@ services:
       dockerfile: Dockerfile
     container_name: template_celery-beat
     restart: always
-    command: ./src/conf/celery-beat_entrypoint.sh
+    command: ./src/conf/entrypoints/celery-beat.sh
     mem_limit: 1g
     cpus: "1.0"
     env_file:
       - ./.env
     depends_on:
-      - db
-      - redis
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
 
-  flower:
-    image: mher/flower
-    environment:
-      - CELERY_BROKER_URL=amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672//
-      - FLOWER_PORT=5555
-    ports:
-      - "5555:5555"
+  taskiq:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: template_taskiq_worker
+    restart: always
+    command: ./src/conf/entrypoints/taskiq.sh
+    env_file:
+      - ./.env
     depends_on:
-      - celery
-      - redis
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
 
   minio:
     image: minio/minio:latest
@@ -110,7 +114,7 @@ services:
     network_mode: host
 
 volumes:
-  prod_psgsql_volume:
+  template_psgsql_volume:
   pgadmin_data:
   rabbitmq_data:
   minio_volume:

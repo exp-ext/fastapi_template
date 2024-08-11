@@ -12,9 +12,10 @@ alembic
 asyncpg
 psycopg2-binary
 
-celery[gevent]
-redis
-aioredis
+celery
+taskiq-aio-pika
+taskiq_redis
+redis[asyncio]
 celery-sqlalchemy-scheduler
 
 asyncer

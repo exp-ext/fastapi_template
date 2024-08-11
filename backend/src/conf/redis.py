@@ -3,6 +3,8 @@ from redis.asyncio import Redis
 
 from . import logger
 
+logger = logger.getChild(__name__)
+
 
 class AsyncRedisClient:
     _client: Redis = None

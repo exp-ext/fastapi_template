@@ -45,4 +45,11 @@ class MediaStorage(S3BaseClient):
     custom_domain = '{}.{}'.format(bucket_name, settings.MINIO_DOMAIN)
 
 
+class DatabaseStorage(S3BaseClient):
+    bucket_name = settings.MINIO_DATABASE_BUCKET
+    default_acl = 'private'
+
+
 media_storage = MediaStorage()
+
+database_storage = DatabaseStorage()

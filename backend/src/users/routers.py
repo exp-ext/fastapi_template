@@ -69,5 +69,5 @@ async def update_user_image_with_url(
     is_main: bool = Form(...),
     user_manager: UserManager = Depends(get_current_active_user_and_manager)
 ):
-    image_dao_resp = await user_manager.update_user_image_with_upload_url(file_name, is_main=is_main)
+    image_dao_resp = await user_manager.update_user_image_with_upload_url(image_id, file_name, is_main)
     return image_dao_resp

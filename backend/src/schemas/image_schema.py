@@ -2,7 +2,14 @@ import uuid
 
 from pydantic import BaseModel, HttpUrl
 
-from models import Image
+
+class ImageSchema(BaseModel):
+    id: uuid.UUID
+    file: str
+    is_main: bool
+
+    class Config:
+        from_attributes = True
 
 
 class ImageCreate(BaseModel):
@@ -18,12 +25,9 @@ class UploadImageResponse(BaseModel):
     id: uuid.UUID
     is_main: bool
 
-    class Config:
-        from_attributes = True
-
 
 class ImageDAOResponse(BaseModel):
-    image: Image
+    image: ImageSchema
     url: HttpUrl
 
 

@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     MINIO_REGION_NAME: str = os.getenv("MINIO_REGION_NAME")
     MINIO_MEDIA_BUCKET: str = os.getenv("MINIO_MEDIA_BUCKET")
     MINIO_STATIC_BUCKET: str = os.getenv("MINIO_STATIC_BUCKET")
+    MINIO_DATABASE_BUCKET: str = os.getenv("MINIO_DATABASE_BUCKET")
     MINIO_USE_SSL: bool = int(os.getenv("MINIO_USE_SSL"))
 
     SECRET_KEY: str = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))

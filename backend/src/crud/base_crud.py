@@ -6,9 +6,10 @@ from fastapi_async_sqlalchemy import db
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
-from sqlalchemy import exc, func, select
+from sqlalchemy import exc, func, inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.selectable import Select
+from src.conf import logger
 from src.models.base_model import Base
 
 ModelType = TypeVar("ModelType", bound=Base)
@@ -16,6 +17,7 @@ CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
 T = TypeVar("T", bound=Base)
+logger = logger.getChild(__name__)
 
 
 class GenericCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
@@ -23,10 +25,10 @@ class GenericCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
     def __init__(self, model: type[ModelType]):
         """
-        CRUD object with default methods to Create, Read, Update, Delete (CRUD).
-        **Parameters**
-        * `model`: Model model class
-        * `schema`: Pydantic model (schema) class
+        CRUD-объект с методами по умолчанию для создания, чтения, обновления, удаления (CRUD).
+        ## Параметры
+        - `model`: Класс модели
+        - ``chema``: Класс пидантической модели (схемы)
         """
         self.model = model
         self.db = db
@@ -121,3 +123,39 @@ class GenericCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         await db_session.delete(obj)
         await db_session.commit()
         return obj
+
+    def _get_table_names(self, connection):
+        inspector = inspect(connection)
+        return inspector.get_table_names()
+
+    async def _check_association_table(self, model_instance: Type[Base], related_model: Type[Base], db_session: AsyncSession) -> tuple[str, str]:
+        """
+        Проверяет наличие промежуточной таблицы между моделями.
+        Если таблицы нет, логирует ошибку и генерирует общее исключение для клиента.
+        """
+        model_name = model_instance.__class__.__name__.lower()
+        related_model_name = related_model.__name__.lower()
+        association_table_name = f"{model_name}_{related_model_name}_association"
+
+        conn = await db_session.connection()
+        table_names = await conn.run_sync(self._get_table_names)
+
+        if association_table_name not in table_names:
+            logger.error(
+                f"You need to create an intermediate table to link {model_name} to {related_model_name}.\n\n"
+                f"Add to {model_instance.__class__.__name__} model:\n"
+                f"{model_name}s = relationship(\"{related_model.__name__}\", secondary=\"{association_table_name}\", back_populates=\"{related_model_name}_files\")\n\n"
+                f"To {related_model.__name__} model:\n"
+                f"{related_model_name}_files = relationship(\"{model_instance.__class__.__name__}\", secondary=\"{association_table_name}\", back_populates=\"{model_name}s\")\n\n"
+                f"Create an intermediate table:\n"
+                f"{association_table_name} = Table(\n"
+                f"    '{association_table_name}', Base.metadata,\n"
+                f"    Column('{model_name}_id', UUID(as_uuid=True), ForeignKey('{model_instance.__tablename__}.id'), primary_key=True),\n"
+                f"    Column('{related_model_name}_id', UUID(as_uuid=True), ForeignKey('{related_model.__tablename__}.id'), primary_key=True)\n"
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Server Error: Association table is missing."
+            )
+
+        return model_name, association_table_name
