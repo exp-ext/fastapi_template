@@ -2,25 +2,25 @@ fastapi[all]
 fastapi-users[sqlalchemy]
 fastapi-pagination
 fastapi-cache2
+sqladmin[full]
+
 aioboto3
 pillow
 filetype
 
 sqlalchemy[asyncio]
 sqlalchemy-utils
-fastapi-async-sqlalchemy
 alembic
 asyncpg
 psycopg2-binary
+redis[asyncio]
 
 taskiq-fastapi
 taskiq-aio-pika
 taskiq-redis
 
 celery
-redis[asyncio]
 celery-sqlalchemy-scheduler
 
-asyncer
 pytest
 pytest-asyncio

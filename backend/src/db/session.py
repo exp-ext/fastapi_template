@@ -17,7 +17,7 @@ engine = create_async_engine(
     pool_size=POOL_SIZE,
     max_overflow=64,
 )
-AsyncSessionLocal = sessionmaker(
+async_session = sessionmaker(
     autocommit=False,
     autoflush=False,
     bind=engine,
@@ -32,7 +32,7 @@ engine = create_engine(
     pool_size=POOL_SIZE,
     max_overflow=64,
 )
-SyncSessionLocal = sessionmaker(
+sync_session = sessionmaker(
     autocommit=False,
     autoflush=False,
     bind=engine,

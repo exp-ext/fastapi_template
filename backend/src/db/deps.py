@@ -4,18 +4,18 @@ from fastapi import Depends, Request
 from fastapi_users.db import SQLAlchemyUserDatabase
 from redis.asyncio import ConnectionPool
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.db.session import AsyncSessionLocal, SyncSessionLocal
+from src.db.session import async_session, sync_session
 from src.models import User
 from taskiq import TaskiqDepends
 
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
-    async with AsyncSessionLocal() as session:
+    async with async_session() as session:
         yield session
 
 
-async def get_jobs_db() -> AsyncGenerator[AsyncSession, None]:
-    async with SyncSessionLocal() as session:
+async def get_sync_session() -> AsyncGenerator[AsyncSession, None]:
+    async with sync_session() as session:
         yield session
 
 

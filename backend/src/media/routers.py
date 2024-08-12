@@ -1,27 +1,15 @@
 from typing import List
+
 from fastapi import APIRouter, Depends, Form, Query
-from fastapi.responses import JSONResponse
 from pydantic import UUID4
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.crud import current_active_user, image_dao
 from src.db.deps import get_async_session
 from src.models.user_model import User
 from src.tasks.image_tasks import process_image_task
-from src.utils.s3_utils import S3Manager
 from starlette import status
 
 media_router = APIRouter()
-
-
-@media_router.get("/all-images/", status_code=status.HTTP_200_OK)
-async def get_all_images(
-    storage: str = Form(...),
-    user: User = Depends(current_active_user)
-):
-    s3_manager = S3Manager(storage=storage)
-    file_path = "users"
-    images_path_parts = await s3_manager.list_objects(path=file_path, file_type="all")
-    return JSONResponse({"urls": images_path_parts})
 
 
 @media_router.get("/images/{image_id}", status_code=status.HTTP_200_OK)
