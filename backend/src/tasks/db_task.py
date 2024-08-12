@@ -1,8 +1,8 @@
 from src.cli import AsyncDatabaseManager
-from src.conf import celery_app
+from src.conf import taskiq_broker
 
 
-@celery_app.task()
+@taskiq_broker.task
 def dump_db():
     db_manager = AsyncDatabaseManager()
     db_manager.dump_db()

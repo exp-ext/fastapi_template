@@ -1,18 +1,16 @@
 from typing import List
-
-from fastapi import APIRouter, Depends, Form, Query, Request
+from fastapi import APIRouter, Depends, Form, Query
 from fastapi.responses import JSONResponse
-from fastapi.templating import Jinja2Templates
 from pydantic import UUID4
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.crud import current_active_user, image_dao
 from src.db.deps import get_async_session
 from src.models.user_model import User
+from src.tasks.image_tasks import process_image_task
 from src.utils.s3_utils import S3Manager
 from starlette import status
 
 media_router = APIRouter()
-templates = Jinja2Templates(directory="src/templates")
 
 
 @media_router.get("/all-images/", status_code=status.HTTP_200_OK)
@@ -41,6 +39,10 @@ async def get_images(
     return images
 
 
-@media_router.get("/upload-photo/")
-async def upload_photo(request: Request):
-    return templates.TemplateResponse("media/upload_photo.html", {"request": request})
+@media_router.post("/images/treatment/", status_code=status.HTTP_200_OK)
+async def create_task_image_treatment(
+    image_id: UUID4 = Form(...),
+    _: User = Depends(current_active_user),
+):
+    await process_image_task.kiq(image_id=image_id)
+    return 'Done'

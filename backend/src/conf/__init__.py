@@ -5,13 +5,13 @@ from .fastapi import ModeEnum, settings
 from .logging import logger
 from .redis import AsyncRedisClient
 from .s3_storages import database_storage, media_storage
-from .taskiq import taskiq_app
+from .taskiq import taskiq_broker
 
 celery_app = CeleryAppFactory.get_celery_app()
 
 __all__ = (
     'settings',
-    'taskiq_app',
+    'taskiq_broker',
     'celery_app',
     'AsyncRedisClient',
     'ModeEnum',

@@ -2,6 +2,7 @@ import io
 import os
 from typing import List, Type
 
+import aiohttp
 import filetype
 from botocore.exceptions import ClientError
 from fastapi import HTTPException, UploadFile
@@ -312,3 +313,24 @@ class S3Manager:
                 error_code = e.response['Error']['Code']
                 if error_code != 'NoSuchKey':
                     raise HTTPException(status_code=500, detail="Error deleting file from S3") from e
+
+    async def download_file_by_url(self, url: str) -> UploadFile:
+        """
+        Загружает файл по URL и возвращает его как объект UploadFile.
+
+        Аргументы:
+        - url (`str`): URL файла для загрузки.
+
+        Возвращает:
+        - `UploadFile`: Объект, представляющий загруженный файл.
+        """
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status != 200:
+                    raise HTTPException(status_code=response.status, detail="Failed to download file")
+
+                file_content = await response.read()
+                file_name = url.split("/")[-1]
+
+                file = UploadFile(filename=file_name, file=io.BytesIO(file_content))
+                return file

@@ -4,6 +4,7 @@ fastapi-pagination
 fastapi-cache2
 aioboto3
 pillow
+filetype
 
 sqlalchemy[asyncio]
 sqlalchemy-utils
@@ -12,9 +13,11 @@ alembic
 asyncpg
 psycopg2-binary
 
-celery
+taskiq-fastapi
 taskiq-aio-pika
-taskiq_redis
+taskiq-redis
+
+celery
 redis[asyncio]
 celery-sqlalchemy-scheduler
 

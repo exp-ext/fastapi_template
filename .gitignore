@@ -159,3 +159,5 @@ minio/
 mytest.py
 distil_bert/
 dumpfile.sql
+
+__pycache__

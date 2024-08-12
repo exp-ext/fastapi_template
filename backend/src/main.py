@@ -1,12 +1,13 @@
 from typing import AsyncIterator
 
+import taskiq_fastapi
 from fastapi import FastAPI
 from fastapi.concurrency import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
 from fastapi_async_sqlalchemy import SQLAlchemyMiddleware
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
-from src.conf import settings
+from src.conf import settings, taskiq_broker
 from src.conf.redis import set_async_redis_client
 from src.routers import main_router
 from starlette.middleware.cors import CORSMiddleware
@@ -17,7 +18,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     redis_client = await set_async_redis_client()
     FastAPICache.init(RedisBackend(redis_client), prefix="fastapi-cache")
     await FastAPICache.clear()
+    if not taskiq_broker.is_worker_process:
+        await taskiq_broker.startup()
     yield
+    if not taskiq_broker.is_worker_process:
+        await taskiq_broker.shutdown()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -26,6 +31,7 @@ app.include_router(main_router)
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 app.mount("/templates", StaticFiles(directory="src/templates"), name="templates")
 
+taskiq_fastapi.init(taskiq_broker, "test_script:app")
 
 app.add_middleware(
     SQLAlchemyMiddleware,

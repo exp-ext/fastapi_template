@@ -47,7 +47,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         return image
 
     async def update_user_image(self, image_id: uuid.UUID, file: UploadFile, is_main: bool) -> Image:
-        image = await image_dao.update_file(id=image_id, file=file, is_main=is_main, path=self.image_path, db_session=self.db_session)
+        image = await image_dao.update_file(id=image_id, file=file, is_main=is_main, model_instance=self.user, path=self.image_path, db_session=self.db_session)
         return image
 
     async def delete_user_image(self, image_id: uuid.UUID) -> None:
@@ -63,7 +63,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
     async def update_user_image_with_upload_url(self, image_id: uuid.UUID, file_name: str, is_main: bool) -> str:
         image_dao_resp = await image_dao.update_without_file(
-            id=image_id, file_name=file_name, is_main=is_main, path=self.image_path, db_session=self.db_session
+            id=image_id, file_name=file_name, is_main=is_main, model_instance=self.user, path=self.image_path, db_session=self.db_session
         )
         return image_dao_resp
 
