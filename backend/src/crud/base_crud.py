@@ -2,7 +2,6 @@ from typing import Any, Generic, Type, TypeVar
 from uuid import UUID
 
 from fastapi import HTTPException
-from fastapi_async_sqlalchemy import db
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate
 from pydantic import BaseModel
@@ -21,36 +20,22 @@ logger = logger.getChild(__name__)
 
 
 class GenericCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
-    db: AsyncSession
 
     def __init__(self, model: type[ModelType]):
-        """
-        CRUD-объект с методами по умолчанию для создания, чтения, обновления, удаления (CRUD).
-        ## Параметры
-        - `model`: Класс модели
-        - ``chema``: Класс пидантической модели (схемы)
-        """
         self.model = model
-        self.db = db
-
-    def get_db(self) -> Type[AsyncSession]:
-        return self.db
 
     async def get(self, *, id: UUID | str, db_session: AsyncSession | None = None) -> ModelType | None:
-        db_session = db_session or self.db.session
         query = select(self.model).where(self.model.id == id)
         result = await db_session.execute(query)
         return result.scalars().one_or_none()
 
     async def get_by_ids(self, *, list_ids: list[UUID | str], db_session: AsyncSession | None = None,) -> list[ModelType] | None:
-        db_session = db_session or self.db.session
         result = await db_session.execute(
             select(self.model).where(self.model.id.in_(list_ids))
         )
         return result.scalars().all()
 
     async def get_count(self, db_session: AsyncSession | None = None) -> ModelType | None:
-        db_session = db_session or self.db.session
         result = await db_session.execute(
             select(func.count()).select_from(select(self.model).subquery())
         )
@@ -59,7 +44,6 @@ class GenericCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     async def get_multi(
         self, *, skip: int = 0, limit: int = 100, query: Select[ModelType] | None = None, db_session: AsyncSession | None = None,
     ) -> list[ModelType]:
-        db_session = db_session or self.db.session
         if query is None:
             query = select(self.model).offset(skip).limit(limit).order_by(self.model.id)
         result = await db_session.execute(query)
@@ -68,7 +52,6 @@ class GenericCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     async def get_multi_paginated(
         self, *, params: Params | None = Params(), query: T | Select[T] | None = None, db_session: AsyncSession | None = None,
     ) -> Page[ModelType]:
-        db_session = db_session or self.db.session
         if query is None:
             query = select(self.model)
 
@@ -78,7 +61,6 @@ class GenericCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     async def create(
         self, *, obj_in: CreateSchemaType | ModelType, created_by_id: UUID | str | None = None, db_session: AsyncSession | None = None,
     ) -> ModelType:
-        db_session = db_session or self.db.session
 
         if not isinstance(obj_in, self.model):
             db_obj = self.model(**obj_in.model_dump())
@@ -100,7 +82,6 @@ class GenericCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     async def update(
         self, *, obj_current: ModelType, obj_new: UpdateSchemaType | dict[str, Any] | ModelType, db_session: AsyncSession | None = None,
     ) -> ModelType:
-        db_session = db_session or self.db.session
 
         if isinstance(obj_new, dict):
             update_data = obj_new
@@ -117,7 +98,6 @@ class GenericCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     async def remove(
         self, *, id: UUID | str, db_session: AsyncSession | None = None
     ) -> ModelType:
-        db_session = db_session or self.db.session
         result = await db_session.execute(select(self.model).where(self.model.id == id))
         obj = result.scalars().one()
         await db_session.delete(obj)

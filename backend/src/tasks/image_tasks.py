@@ -14,5 +14,4 @@ async def process_image_task(image_id: UUID4, db_session: AsyncSession = TaskiqD
     file = await image.storage.download_file_by_url(str(url))
     image.file = await image.storage.update_object(file, image.file, str(path.parent))
     await db_session.commit()
-
     return f"Successfully update image {image_id}"
