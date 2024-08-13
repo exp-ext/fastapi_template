@@ -10,6 +10,7 @@ filetype
 
 sqlalchemy[asyncio]
 sqlalchemy-utils
+fastapi-async-sqlalchemy
 alembic
 asyncpg
 psycopg2-binary

@@ -9,7 +9,6 @@ from src.crud.base_crud import GenericCRUD
 from src.models.base_model import Base
 from src.models.image_model import Image
 from src.schemas.image_schema import ImageCreate, ImageDAOResponse, ImageUpdate
-from src.utils.s3_utils import S3Manager
 
 
 class ImageDAO(GenericCRUD[Image, ImageCreate, ImageUpdate]):
@@ -38,7 +37,7 @@ class ImageDAO(GenericCRUD[Image, ImageCreate, ImageUpdate]):
 
     async def _get_image_url(self, db_obj: Image) -> ImageDAOResponse:
         """Получает url к экземпляру Image."""
-        url = await db_obj.get_url()
+        url = await db_obj.storage.generate_url(db_obj.file)
         return ImageDAOResponse(image=db_obj, url=url)
 
     async def get(
@@ -50,7 +49,7 @@ class ImageDAO(GenericCRUD[Image, ImageCreate, ImageUpdate]):
         if scheme:
             image_with_url = await self._get_image_url(db_obj)
             return image_with_url
-        url = await db_obj.get_url()
+        url = await db_obj.storage.generate_url(db_obj.file)
         return db_obj, url
 
     async def get_by_ids(self, *, list_ids: list[UUID | str], db_session: AsyncSession | None = None,) -> list[Image] | None:
@@ -71,13 +70,11 @@ class ImageDAO(GenericCRUD[Image, ImageCreate, ImageUpdate]):
             db_session=db_session
         )
 
-        s3_manager = S3Manager(storage=self.model.storage())
-        file_key = await s3_manager.put_object(file, path)
-
         if is_main:
             await self._reset_is_main(model_name, model_instance, association_table_name, db_session)
 
-        db_obj = self.model(file=file_key, is_main=is_main)
+        db_obj = self.model(is_main=is_main)
+        db_obj.file = await db_obj.storage.put_object(file, path)
         db_session.add(db_obj)
         await db_session.flush()
 
@@ -100,14 +97,12 @@ class ImageDAO(GenericCRUD[Image, ImageCreate, ImageUpdate]):
         if not db_obj:
             raise HTTPException(status_code=404, detail="Object not found")
 
-        s3_manager = S3Manager(storage=self.model.storage())
-        new_key = await s3_manager.update_object(file, db_obj.file, path)
+        db_obj.file = await db_obj.storage.update_object(file, db_obj.file, path)
+        db_obj.is_main = is_main
 
         if is_main:
             await self._reset_is_main(model_name, model_instance, association_table_name, db_session)
 
-        db_obj.file = new_key
-        db_obj.is_main = is_main
         await db_session.commit()
         await db_session.refresh(db_obj)
         return db_obj
@@ -123,9 +118,8 @@ class ImageDAO(GenericCRUD[Image, ImageCreate, ImageUpdate]):
         if not db_obj:
             return
 
-        s3_manager = S3Manager(storage=self.model.storage())
         if db_obj.file:
-            await s3_manager.delete_object(db_obj.file)
+            await db_obj.storage.delete_object(db_obj.file)
 
         association_table = Table(association_table_name, Base.metadata, autoload_with=db_session.bind)
         stmt = association_table.delete().where(association_table.c.image_id == id)
@@ -143,13 +137,11 @@ class ImageDAO(GenericCRUD[Image, ImageCreate, ImageUpdate]):
             db_session=db_session
         )
 
-        s3_manager = S3Manager(storage=self.model.storage())
-        url, file_key = await s3_manager.generate_upload_url(file_name, path=path)
-
         if is_main:
             await self._reset_is_main(model_name, model_instance, association_table_name, db_session)
 
-        db_obj = self.model(file=file_key, is_main=is_main)
+        db_obj = self.model(is_main=is_main)
+        url, db_obj.file = await db_obj.storage.generate_upload_url(file_name, path=path)
         db_session.add(db_obj)
         await db_session.flush()
 
@@ -170,11 +162,11 @@ class ImageDAO(GenericCRUD[Image, ImageCreate, ImageUpdate]):
         db_obj = await super().get(id=id, db_session=db_session)
         if not db_obj:
             raise HTTPException(status_code=404, detail="Object not found")
-        s3_manager = S3Manager(storage=self.model.storage())
-        url, file_key = await s3_manager.generate_update_url(file_name, db_obj.file, path=path)
+
         if is_main:
             await self._reset_is_main(model_name, model_instance, association_table_name, db_session)
-        db_obj.file = file_key
+
+        url, db_obj.file = await db_obj.storage.generate_update_url(file_name, db_obj.file, path=path)
         db_obj.is_main = is_main
         await db_session.commit()
         await db_session.refresh(db_obj)

@@ -4,6 +4,7 @@ from .celery import CeleryAppFactory
 from .fastapi import ModeEnum, settings
 from .logging import logger
 from .redis import AsyncRedisClient
+from .s3_client import S3StorageManager
 from .s3_storages import database_storage, media_storage
 from .taskiq import taskiq_broker
 
@@ -16,6 +17,7 @@ __all__ = (
     'AsyncRedisClient',
     'ModeEnum',
     'logger',
+    'S3StorageManager',
     'media_storage',
     'database_storage'
 )

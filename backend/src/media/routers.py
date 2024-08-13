@@ -13,8 +13,8 @@ media_router = APIRouter()
 
 
 @media_router.get("/images/{image_id}", status_code=status.HTTP_200_OK)
-async def get_image(image_id: UUID4):
-    image = await image_dao.get(id=image_id)
+async def get_image(image_id: UUID4, db_session: AsyncSession = Depends(get_async_session)):
+    image = await image_dao.get(id=image_id, db_session=db_session)
     return image
 
 

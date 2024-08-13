@@ -1,15 +1,21 @@
-from sqlalchemy import Boolean, String
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.conf import media_storage
 from src.models.base_model import Base
 from src.models.interim_tables import user_image_association
-from src.utils.s3_utils import S3Manager
+from src.models.sql_decorator import FilePath
+
+if TYPE_CHECKING:
+    from src.conf import S3StorageManager
 
 
 class Image(Base):
     __tablename__ = "image"
+    _file_storage = media_storage
 
-    file: Mapped[str] = mapped_column(String, nullable=True)
+    file: Mapped[str] = mapped_column(FilePath(_file_storage), nullable=True)
     is_main: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     users = relationship("User", secondary=user_image_association, back_populates="image_files")
@@ -17,14 +23,7 @@ class Image(Base):
     def __repr__(self):
         return f"<Media(id={self.id}, file={self.file}, is_main={self.is_main})>"
 
-    @classmethod
-    def storage(cls):
-        return media_storage
-
-    async def get_url(self) -> str:
-        """Возвращает фактический URL файла, хранящегося в S3."""
-        if not self.file:
-            return ""
-        s3_manager = S3Manager(storage=self.storage())
-        file_url = await s3_manager.get_url(self.file)
-        return file_url
+    @property
+    def storage(self) -> "S3StorageManager":
+        """Возвращает объект storage, чтобы использовать его методы напрямую."""
+        return self._file_storage
