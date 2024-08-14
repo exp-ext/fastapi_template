@@ -3,6 +3,7 @@ fastapi-users[sqlalchemy]
 fastapi-pagination
 fastapi-cache2
 sqladmin[full]
+gunicorn
 
 aioboto3
 pillow

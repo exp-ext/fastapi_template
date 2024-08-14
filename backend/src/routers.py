@@ -9,7 +9,7 @@ main_router = APIRouter()
 main_router.include_router(auth_router, prefix="/auth", tags=["auth"])
 main_router.include_router(users_router, prefix="/users", tags=["users"])
 main_router.include_router(account_router, prefix="/users-account", tags=["users-account"])
-main_router.include_router(media_router, prefix="/media", tags=["media"])
+main_router.include_router(media_router, prefix="/assets", tags=["assets"])
 
 
 @main_router.get("/")

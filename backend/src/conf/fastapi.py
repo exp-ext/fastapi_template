@@ -43,7 +43,6 @@ class Settings(BaseSettings):
 
     MINIO_ACCESS_KEY: str = os.getenv("MINIO_ACCESS_KEY")
     MINIO_SECRET_KEY: str = os.getenv("MINIO_SECRET_KEY")
-    MINIO_ENDPOINT: str = os.getenv("MINIO_ENDPOINT")
     MINIO_DOMAIN: str = os.getenv("MINIO_DOMAIN")
     MINIO_REGION_NAME: str = os.getenv("MINIO_REGION_NAME")
     MINIO_MEDIA_BUCKET: str = os.getenv("MINIO_MEDIA_BUCKET")

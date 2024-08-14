@@ -1,4 +1,5 @@
 import io
+import mimetypes
 import os
 from typing import List
 
@@ -388,3 +389,37 @@ class S3StorageManager(S3AsyncClient):
 
                 file = UploadFile(filename=file_name, file=io.BytesIO(file_content))
                 return file
+
+    async def collect_and_upload_static(self, static_dir: str) -> None:
+        """
+        Собирает все статические файлы из указанной директории и загружает их в S3 бакет,
+        сохраняя структуру директорий.
+
+        Аргументы:
+        - static_dir (`str`): Локальный путь к директории, содержащей статические файлы.
+        """
+        async with self.client as s3_client:
+            for root, _, files in os.walk(static_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    s3_key = os.path.relpath(file_path, static_dir)
+
+                    content_type, _ = mimetypes.guess_type(file_path)
+                    if content_type is None:
+                        content_type = 'application/octet-stream'
+
+                    with open(file_path, 'rb') as f:
+                        file_content = f.read()
+
+                    try:
+                        await s3_client.put_object(
+                            Bucket=self.bucket_name,
+                            Key=s3_key,
+                            Body=file_content,
+                            ContentType=content_type,
+                            ACL=self.default_acl
+                        )
+                    except ClientError as e:
+                        if e.response['Error']['Code'] == '405':
+                            raise HTTPException(status_code=405, detail=f"Method Not Allowed when uploading file {file} to S3")
+                        raise HTTPException(status_code=500, detail=f"Error uploading file {file} to S3") from e

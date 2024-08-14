@@ -5,7 +5,7 @@ from .fastapi import ModeEnum, settings
 from .logging import logger
 from .redis import AsyncRedisClient
 from .s3_client import S3StorageManager
-from .s3_storages import database_storage, media_storage
+from .s3_storages import database_storage, media_storage, static_storage
 from .taskiq import taskiq_broker
 
 celery_app = CeleryAppFactory.get_celery_app()
@@ -18,6 +18,7 @@ __all__ = (
     'ModeEnum',
     'logger',
     'S3StorageManager',
+    'static_storage',
     'media_storage',
     'database_storage'
 )
