@@ -13,19 +13,26 @@ from src.conf import settings
 
 
 class S3AsyncClient:
+    _cached_session = None
+
     def __init__(self):
         self.endpoint_domain = settings.MINIO_DOMAIN
         self.use_ssl = settings.MINIO_USE_SSL
-        self.session = aioboto3.Session(
-            aws_access_key_id=settings.MINIO_ACCESS_KEY,
-            aws_secret_access_key=settings.MINIO_SECRET_KEY,
-            region_name=settings.MINIO_REGION_NAME
-        )
+        if S3AsyncClient._cached_session is None:
+            S3AsyncClient._cached_session = aioboto3.Session(
+                aws_access_key_id=settings.MINIO_ACCESS_KEY,
+                aws_secret_access_key=settings.MINIO_SECRET_KEY,
+                region_name=settings.MINIO_REGION_NAME
+            )
         self.endpoint_url = self._get_endpoint_url()
 
     @property
     def client(self):
-        return self._s3_client_context_manager()
+        return S3AsyncClient._cached_session.client(
+            "s3",
+            endpoint_url=self.endpoint_url,
+            use_ssl=self.use_ssl
+        )
 
     def _get_endpoint_url(self) -> str:
         if self.endpoint_domain.startswith("http"):
@@ -34,15 +41,8 @@ class S3AsyncClient:
         protocol = "https" if self.use_ssl else "http"
         return f"{protocol}://{self.endpoint_domain}"
 
-    def _s3_client_context_manager(self):
-        return self.session.client(
-            "s3",
-            endpoint_url=self.endpoint_url,
-            use_ssl=self.use_ssl
-        )
-
     async def __aenter__(self):
-        self.s3_client = await self._s3_client_context_manager().__aenter__()
+        self.s3_client = await self.client.__aenter__()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):

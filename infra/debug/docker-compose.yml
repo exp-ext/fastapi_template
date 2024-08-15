@@ -1,50 +1,55 @@
+x-shared-parameters: &shared-parameters
+  env_file:
+    - ../../.env
+  network_mode: "host"
+  restart: always
+
+x-db-dependency: &db-dependency
+  depends_on:
+    db:
+      condition: service_started
+    rabbitmq:
+      condition: service_healthy
+
 services:
   db:
+    <<: *shared-parameters
     image: postgres:14-alpine
-    container_name: debug_stage_db
-    restart: unless-stopped
+    container_name: debug_db
     volumes:
-      - debug_stage_psgsql_volume:/var/lib/postgresql/data/
+      - debug_psgsql_volume:/var/lib/postgresql/data/
     ports:
       - "5432:5432"
-    env_file:
-      - ../.env
 
   pgadmin:
+    <<: *shared-parameters
     image: dpage/pgadmin4:latest
     container_name: pgadmin
-    restart: on-failure
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.ru
-      PGADMIN_DEFAULT_PASSWORD: admin_password
     ports:
-      - 8090:80
+      - "8090:8090"
     volumes:
       - pgadmin_volume:/var/lib/pgadmin/
     depends_on:
       - db
 
   redis:
+    <<: *shared-parameters
     image: redis:latest
-    container_name: debug_stage_redis
-    restart: always
+    container_name: debug_redis
     command: >
       --requirepass ${REDIS_PASSWORD}
     ports:
       - "6379:6379"
-    env_file:
-      - ../.env
 
   rabbitmq:
+    <<: *shared-parameters
     image: rabbitmq:management-alpine
-    container_name: debug_stage_rabbitmq
+    container_name: debug_rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
-    env_file:
-      - ../.env
     volumes:
-      - debug_stage_rabbitmq_volume:/var/lib/rabbitmq/:rw
+      - debug_rabbitmq_volume:/var/lib/rabbitmq/:rw
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
@@ -52,86 +57,32 @@ services:
       retries: 5
 
   celery:
+    <<: [*shared-parameters, *db-dependency]
     build:
       context: ../../backend
       dockerfile: Dockerfile
-    container_name: debug_stage_celery
-    restart: always
+    container_name: debug_celery
     command: ./src/conf/entrypoints/celery.sh
-    env_file:
-      - ../.env
-    depends_on:
-      db:
-        condition: service_started
-      rabbitmq:
-        condition: service_healthy
 
   celery-beat:
+    <<: [*shared-parameters, *db-dependency]
     build:
       context: ../../backend
       dockerfile: Dockerfile
-    container_name: debug_stage_celery-beat
-    restart: always
+    container_name: debug_celery-beat
     command: ./src/conf/entrypoints/celery-beat.sh
     mem_limit: 1g
     cpus: "1.0"
-    env_file:
-      - ../.env
-    depends_on:
-      db:
-        condition: service_started
-      rabbitmq:
-        condition: service_healthy
 
   taskiq:
+    <<: [*shared-parameters, *db-dependency]
     build:
       context: ../../backend
       dockerfile: Dockerfile
-    container_name: debug_stage_taskiq_worker
-    restart: always
+    container_name: debug_taskiq_worker
     command: ./src/conf/entrypoints/taskiq.sh
-    env_file:
-      - ../.env
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-
-  minio:
-    image: minio/minio:latest
-    container_name: debug_stage_minio
-    restart: always
-    entrypoint: |
-      sh -c "
-      minio server --console-address \":9001\" /data & 
-      MINIO_PID=\$! && 
-      sleep 5 && 
-      /bin/sh /usr/bin/create_buckets.sh && 
-      wait \$MINIO_PID
-      "
-    ports:
-      - '9000:9000'
-      - '9090:9001'
-    volumes:
-      - debug_stage_minio_volume:/data
-      - ../create_buckets.sh:/usr/bin/create_buckets.sh
-    env_file:
-      - ../.env
-
-  nginx:
-    image: nginx:latest
-    container_name: debug_stage_nginx
-    volumes:
-      - ../nginx:/etc/nginx/templates
-      - ../../backend/src/static:/var/html/static/:ro
-    environment:
-      - BACKEND_SERVER="127.0.0.1:8100"
-      - MINIO_SERVER="127.0.0.1:9000"
-    ports:
-      - "80:80"
-    network_mode: "host"
 
 volumes:
-  debug_stage_psgsql_volume:
+  debug_psgsql_volume:
   pgadmin_volume:
-  debug_stage_rabbitmq_volume:
-  debug_stage_minio_volume:
+  debug_rabbitmq_volume:

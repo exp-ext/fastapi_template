@@ -1,0 +1,36 @@
+services:
+
+  nginx:
+    image: nginx:latest
+    container_name: main_nginx
+    volumes:
+      - ./:/etc/nginx/templates/
+      - ../../backend/src/static:/var/html/static/:ro
+    ports:
+      - '80:80'
+    network_mode: host
+
+  minio:
+    image: minio/minio:latest
+    container_name: main_minio
+    restart: always
+    command: server --console-address ":9001" /data
+    entrypoint: |
+      sh -c "
+      minio server --console-address \":9001\" /data & 
+      MINIO_PID=\$! && 
+      sleep 5 && 
+      /bin/sh /usr/bin/create_buckets.sh && 
+      wait \$MINIO_PID
+      "
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio_volume:/data
+      - ../create_buckets.sh:/usr/bin/create_buckets.sh
+    env_file:
+      - ../../.env
+
+volumes:
+  minio_volume:

@@ -1,48 +1,53 @@
+x-shared-parameters: &shared-parameters
+  env_file:
+    - ../../.env
+  network_mode: "host"
+  restart: always
+
+x-db-dependency: &db-dependency
+  depends_on:
+    db:
+      condition: service_started
+    rabbitmq:
+      condition: service_healthy
+
 services:
   db:
+    <<: *shared-parameters
     image: postgres:16-alpine
     container_name: tmpl_stage_db
-    restart: unless-stopped
     volumes:
       - tmpl_stage_psgsql_volume:/var/lib/postgresql/data/
     ports:
       - "5432:5432"
-    env_file:
-      - ../.env
 
   pgadmin:
+    <<: *shared-parameters
     image: dpage/pgadmin4:latest
     container_name: pgadmin
-    restart: on-failure
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.ru
-      PGADMIN_DEFAULT_PASSWORD: admin_password
     ports:
-      - 8090:80
+      - "8090:8090"
     volumes:
       - pgadmin_volume:/var/lib/pgadmin/
     depends_on:
       - db
 
   redis:
+    <<: *shared-parameters
     image: redis:latest
     container_name: tmpl_stage_redis
-    restart: always
     command: >
       --requirepass ${REDIS_PASSWORD}
     ports:
       - "6379:6379"
-    env_file:
-      - ../.env
 
   rabbitmq:
+    <<: *shared-parameters
     image: rabbitmq:management-alpine
     container_name: tmpl_stage_rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
-    env_file:
-      - ../.env
     volumes:
       - tmpl_stage_rabbitmq_volume:/var/lib/rabbitmq/:rw
     healthcheck:
@@ -52,106 +57,42 @@ services:
       retries: 5
 
   backend:
+    <<: [*shared-parameters, *db-dependency]
     build:
       context: ../../backend
       dockerfile: Dockerfile
     container_name: tmpl_stage_backend
-    restart: always
     command: ./src/conf/entrypoints/fastapi.sh
-    env_file:
-      - ../.env
     ports:
       - 8100:8100
-    depends_on:
-      db:
-        condition: service_started
-      rabbitmq:
-        condition: service_healthy
 
   celery:
+    <<: [*shared-parameters, *db-dependency]
     build:
       context: ../../backend
       dockerfile: Dockerfile
     container_name: tmpl_stage_celery
-    restart: always
     command: ./src/conf/entrypoints/celery.sh
-    env_file:
-      - ../.env
-    depends_on:
-      db:
-        condition: service_started
-      rabbitmq:
-        condition: service_healthy
 
   celery-beat:
+    <<: [*shared-parameters, *db-dependency]
     build:
       context: ../../backend
       dockerfile: Dockerfile
     container_name: tmpl_stage_celery-beat
-    restart: always
     command: ./src/conf/entrypoints/celery-beat.sh
     mem_limit: 1g
     cpus: "1.0"
-    env_file:
-      - ../.env
-    depends_on:
-      db:
-        condition: service_started
-      rabbitmq:
-        condition: service_healthy
 
   taskiq:
+    <<: [*shared-parameters, *db-dependency]
     build:
       context: ../../backend
       dockerfile: Dockerfile
     container_name: tmpl_stage_taskiq_worker
-    restart: always
     command: ./src/conf/entrypoints/taskiq.sh
-    env_file:
-      - ../.env
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-
-  minio:
-    image: minio/minio:latest
-    container_name: tmpl_stage_minio
-    restart: always
-    entrypoint: |
-      sh -c "
-      minio server --console-address \":9001\" /data & 
-      MINIO_PID=\$! && 
-      sleep 5 && 
-      /bin/sh /usr/bin/create_buckets.sh && 
-      wait \$MINIO_PID
-      "
-    ports:
-      - '9000:9000'
-      - '9090:9001'
-    volumes:
-      - tmpl_stage_minio_volume:/data
-      - ../create_buckets.sh:/usr/bin/create_buckets.sh
-    env_file:
-      - ../.env
-
-  nginx:
-    image: nginx:latest
-    container_name: tmpl_stage_nginx
-    volumes:
-      - ../nginx:/etc/nginx/templates
-      - ../../backend/src/static:/var/html/static/:ro
-    environment:
-      - BACKEND_SERVER="backend:8100"
-      - MINIO_SERVER="minio:9000"
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
-      - minio
-
 
 volumes:
   tmpl_stage_psgsql_volume:
   pgadmin_volume:
   tmpl_stage_rabbitmq_volume:
-  tmpl_stage_minio_volume:

@@ -103,7 +103,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
 .venv
 env/
 venv/
@@ -161,3 +160,6 @@ distil_bert/
 dumpfile.sql
 
 __pycache__
+
+# не забудте раскомментировать скрытие секретов!!!!
+# .env

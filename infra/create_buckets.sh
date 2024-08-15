@@ -13,6 +13,9 @@ while ! curl -s http://localhost:9000/minio/health/live; do
     sleep 1
 done
 
+# Установка алиаса для MinIO с указанием региона
+mc alias set --region ${MINIO_REGION_NAME} myminio http://localhost:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}
+
 # Установка алиаса для MinIO
 mc alias set myminio http://localhost:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}
 

@@ -135,7 +135,7 @@ new Vue({
         image.uploaded = true;
 
         try {
-          const response = await fetch('/media/images/treatment/', {
+          const response = await fetch('/assets/images/treatment/', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${this.token}`,

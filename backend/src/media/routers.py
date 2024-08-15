@@ -30,7 +30,8 @@ async def get_images(
 @media_router.post("/images/treatment/", status_code=status.HTTP_200_OK)
 async def create_task_image_treatment(
     image_id: UUID4 = Form(...),
-    _: User = Depends(current_active_user),
+    _: User = Depends(current_active_user), db_session: AsyncSession = Depends(get_async_session)
 ):
     await process_image_task.kiq(image_id=image_id)
+    # await process_image_task(image_id=image_id, db_session=db_session)
     return 'Done'
