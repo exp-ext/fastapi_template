@@ -23,7 +23,7 @@ mc alias set myminio http://localhost:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSW
 for BUCKET in "${BUCKETS[@]}"; do
     if ! mc ls myminio/${BUCKET} > /dev/null 2>&1; then
         mc mb myminio/${BUCKET}
-        mc anonymous set public myminio/${BUCKET}
+        mc anonymous set download myminio/${BUCKET}
         echo "Bucket ${BUCKET} created."
     else
         echo "Bucket ${BUCKET} already exists."

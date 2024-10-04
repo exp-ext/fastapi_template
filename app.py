@@ -45,7 +45,6 @@ def cli():
 def debug():
     # Добавление переменных в env
     custom_env = {
-        'PGADMIN_LISTEN_PORT': '8090',
         'PGADMIN_DEFAULT_EMAIL': 'admin@admin.ru',
         'PGADMIN_DEFAULT_PASSWORD': 'admin_password'
     }
@@ -56,7 +55,6 @@ def debug():
 @cli.command()
 def stage():
     custom_env = {
-        'PGADMIN_LISTEN_PORT': '8090',
         'PGADMIN_DEFAULT_EMAIL': 'admin@admin.ru',
         'PGADMIN_DEFAULT_PASSWORD': 'admin_password'
     }
@@ -87,9 +85,11 @@ def stop(clean):
             print("No containers to remove.")
 
         if clean:
-            print("Cleaning up dangling images and volumes...")
-            subprocess.run('docker images -f "dangling=true" -q | xargs -r docker rmi', shell=True, check=True)
+            print("Cleaning up dangling images...")
+            subprocess.run('docker image prune -f', shell=True, check=True)
+            print("Cleaning up dangling volumes...")
             subprocess.run('docker volume ls -qf dangling=true | grep -E "^[0-9a-f]{64}$" | xargs -r docker volume rm', shell=True, check=True)
+            print("Done!")
 
     except subprocess.CalledProcessError as e:
         print(f"An error occurred: {e}")

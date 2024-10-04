@@ -24,9 +24,12 @@ services:
   pgadmin:
     <<: *shared-parameters
     image: dpage/pgadmin4:latest
-    container_name: pgadmin
+    container_name: pgadmin    
     ports:
       - "8090:8090"
+    restart: unless-stopped
+    environment:
+      - PGADMIN_LISTEN_PORT=8090
     volumes:
       - pgadmin_volume:/var/lib/pgadmin/
     depends_on:
@@ -43,7 +46,7 @@ services:
 
   rabbitmq:
     <<: *shared-parameters
-    image: rabbitmq:management-alpine
+    image: rabbitmq:3.13-management
     container_name: debug_rabbitmq
     ports:
       - "5672:5672"

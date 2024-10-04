@@ -2,7 +2,7 @@ access_log /var/log/nginx/access.log;
 error_log /var/log/nginx/error.log;
 
 upstream backend {
-    server 127.0.0.1:8100;
+    server 127.0.0.1:8080;
 }
 upstream minio {
     server 127.0.0.1:9000;

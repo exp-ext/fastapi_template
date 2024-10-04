@@ -33,5 +33,4 @@ async def create_task_image_treatment(
     _: User = Depends(current_active_user), db_session: AsyncSession = Depends(get_async_session)
 ):
     await process_image_task.kiq(image_id=image_id)
-    # await process_image_task(image_id=image_id, db_session=db_session)
     return 'Done'

@@ -1,5 +1,13 @@
-from .interim_tables import user_image_association
 from .image_model import Image
-from .user_model import User
+from .interim_tables import user_image_association, user_tg_group_association
+from .tg_group_model import TgGroup
+from .user_model import User, TgUser
 
-__all__ = ('User', 'Image', 'user_image_association')
+__all__ = (
+    'Image',
+    'User',
+    'TgGroup',
+    'TgUser',
+    'user_image_association',
+    'user_tg_group_association'
+)

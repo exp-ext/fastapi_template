@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     SECRET_KEY: str = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
     ENCRYPT_KEY: str = os.getenv("ENCRYPT_KEY", base64.urlsafe_b64encode(os.urandom(32)).decode())
 
+    TELEGRAM_TOKEN: str = os.getenv("TELEGRAM_TOKEN")
+    SECRET_BOT_URL: str = os.getenv("SECRET_BOT_URL")
+    DOMAIN: str = os.getenv("DOMAIN")
+
     CELERY_BROKER_URL: str = ""
     CELERY_RESULT_BACKEND: str = ""
 

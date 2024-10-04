@@ -21,17 +21,17 @@ class AsyncRedisClient:
                 socket_connect_timeout=5,
                 socket_timeout=5,
             )
+            logger.info("AsyncRedisClient is setting...")
         return cls._client
 
     @classmethod
-    async def get_client(cls):
+    def get_client(cls):
         if cls._client is None:
-            await cls.initialize()
-            logger.info("AsyncRedisClient is initialized.")
+            logger.error("AsyncRedisClient is not initialized.")
+            raise RuntimeError("AsyncRedisClient has not been initialized. Please initialize the client before using it.")
         return cls._client
 
 
 async def set_async_redis_client() -> Redis:
     client = await AsyncRedisClient.initialize()
-    logger.info("AsyncRedisClient is setting...")
     return client

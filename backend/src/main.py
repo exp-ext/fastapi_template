@@ -12,6 +12,8 @@ from src.conf import settings, taskiq_broker
 from src.conf.redis import set_async_redis_client
 from src.db.session import engine
 from src.routers import main_router
+from src.tgbot.dispatcher import setup_handlers
+from src.tgbot.loader import application
 from starlette.middleware.cors import CORSMiddleware
 
 
@@ -23,7 +25,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     if not taskiq_broker.is_worker_process:
         await taskiq_broker.startup()
-    yield
+
+    await setup_handlers(application)
+    async with application:
+        await application.start()
+        yield
+        await application.stop()
+
     if not taskiq_broker.is_worker_process:
         await taskiq_broker.shutdown()
 

@@ -22,6 +22,9 @@ taskiq-redis
 
 celery
 celery-sqlalchemy-scheduler
+kombu
 
 pytest
 pytest-asyncio
+
+python-telegram-bot[http2,webhooks,rate-limiter,callback-data,job-queue,passport]~=21.6

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from sqlalchemy import Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -9,16 +9,21 @@ from src.models.sql_decorator import FilePath
 
 if TYPE_CHECKING:
     from src.conf import S3StorageManager
+    from src.models import User
 
 
 class Image(Base):
-    __tablename__ = "image"
+    __tablename__ = "images"
     _file_storage = media_storage
 
     file: Mapped[str] = mapped_column(FilePath(_file_storage), nullable=True)
     is_main: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    users = relationship("User", secondary=user_image_association, back_populates="image_files")
+    users: Mapped[List["User"]] = relationship(
+        "User",
+        secondary=user_image_association,
+        back_populates="image_files"
+    )
 
     def __repr__(self):
         return f"<Media(id={self.id}, file={self.file}, is_main={self.is_main})>"

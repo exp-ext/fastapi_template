@@ -1,4 +1,4 @@
-from typing import Any, Generic, Type, TypeVar
+from typing import Any, Generic, List, Type, TypeVar
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -59,15 +59,19 @@ class GenericCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return output
 
     async def create(
-        self, *, obj_in: CreateSchemaType | ModelType, created_by_id: UUID | str | None = None, db_session: AsyncSession | None = None,
+        self, *, obj_in: CreateSchemaType | ModelType | None = None, created_by_id: UUID | int | None = None, relationship_refresh: List = [], db_session: AsyncSession | None = None,
     ) -> ModelType:
 
-        if not isinstance(obj_in, self.model):
+        if obj_in is None:
+            if created_by_id is None:
+                raise ValueError("Either obj_in or created_by_id must be provided")
+            db_obj = self.model(id=created_by_id)
+        elif not isinstance(obj_in, self.model):
             db_obj = self.model(**obj_in.model_dump())
         else:
             db_obj = obj_in
 
-        if created_by_id and hasattr(db_obj, 'created_by_id'):
+        if created_by_id:
             db_obj.id = created_by_id
 
         try:
@@ -76,7 +80,7 @@ class GenericCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         except exc.IntegrityError:
             db_session.rollback()
             raise HTTPException(status_code=409, detail="Resource already exists")
-        await db_session.refresh(db_obj)
+        await db_session.refresh(db_obj, relationship_refresh)
         return db_obj
 
     async def update(
@@ -96,10 +100,12 @@ class GenericCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return obj_current
 
     async def remove(
-        self, *, id: UUID | str, db_session: AsyncSession | None = None
+        self, *, id: UUID | int, db_session: AsyncSession | None = None
     ) -> ModelType:
         result = await db_session.execute(select(self.model).where(self.model.id == id))
-        obj = result.scalars().one()
+        obj = result.scalars().one_or_none()
+        if not obj:
+            return None
         await db_session.delete(obj)
         await db_session.commit()
         return obj

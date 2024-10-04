@@ -1,5 +1,5 @@
 from celery import Celery
-from celery.schedules import crontab
+# from celery.schedules import crontab
 from kombu import Queue
 
 
@@ -37,11 +37,11 @@ class CeleryAppFactory:
                 }
             )
             cls._celery_app.autodiscover_tasks()
-            cls._celery_app.conf.beat_schedule = {
-                'dump_db': {
-                    'task': 'src.tasks.db_task.dump_db',
-                    'schedule': crontab(hour=3, minute=0)
-                },
-            }
+            # cls._celery_app.conf.beat_schedule = {
+            #     'dump_db': {
+            #         'task': 'src.tasks.db_task.dump_db',
+            #         'schedule': crontab(hour=3, minute=0)
+            #     },
+            # }
 
         return cls._celery_app

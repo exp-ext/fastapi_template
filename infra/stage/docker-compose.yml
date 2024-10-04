@@ -64,7 +64,7 @@ services:
     container_name: tmpl_stage_backend
     command: ./src/conf/entrypoints/fastapi.sh
     ports:
-      - 8100:8100
+      - 8080:8080
 
   celery:
     <<: [*shared-parameters, *db-dependency]
