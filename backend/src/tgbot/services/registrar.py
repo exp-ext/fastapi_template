@@ -3,7 +3,8 @@ from typing import List, Optional, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.conf.redis import AsyncRedisClient
-from src.crud import tg_group_dao, tg_user_dao
+from src.crud import tg_group_dao, tg_user_dao, user_ai_model_dao
+from src.db.deps import get_async_session
 from src.models import TgGroup, TgUser
 from src.schemas.tg_user_schema import TgUserCreate
 
@@ -17,7 +18,6 @@ class UserRedisManager:
         redis_user = {
             'user_id': user.user.id if user.user else None,
             'tg_user_id': tg_user.id,
-            'tg_user_username': tg_user.username,
             'groups_connections': [group.id for group in user.groups],
             'is_blocked_bot': user.is_blocked_bot,
         }
@@ -30,9 +30,7 @@ class UserRedisManager:
         redis_user = await self.redis_client.get(redis_key)
         redis_user = json.loads(redis_user) if redis_user else None
 
-        await tg_user_dao.remove(id=225429268, db_session=session)
-
-        prefetch_related.extend(["groups", "user"])
+        prefetch_related.extend(["groups", "user", "active_model"])
         user = await tg_user_dao.get_with_prefetch_related(id=tg_user.id, prefetch_related=prefetch_related, db_session=session)
 
         if not user:
@@ -43,28 +41,31 @@ class UserRedisManager:
                 last_name=tg_user.last_name
             )
             user = await tg_user_dao.create(obj_in=obj_in, db_session=session, relationship_refresh=prefetch_related)
+            await user_ai_model_dao.create_default(user=user, db_session=session)
 
         redis_user = await self.set_user_in_redis(tg_user, user)
         return redis_user, user
 
 
-async def get_user(tg_user, chat, allow_unregistered: bool = False, prefetch_related: list = [], session: AsyncSession = None) -> TgUser | None:
+async def get_user(tg_user, chat, allow_unregistered: bool = False, prefetch_related: list = []) -> TgUser | None:
     """Проверяет регистрацию пользователя или создает его."""
     user_manager = UserRedisManager()
 
-    red_user, user = await user_manager.get_or_create_user(tg_user, prefetch_related, session)
+    async for session in get_async_session():
 
-    if red_user.get('is_blocked_bot') and not allow_unregistered:
-        return None
+        red_user, user = await user_manager.get_or_create_user(tg_user, prefetch_related, session)
 
-    if chat.type != 'private':
-        group = await tg_group_dao.get_by_chat_id(chat_id=chat['id'], db_session=session)
-        if not group:
-            obj_in = TgGroup(chat_id=chat.id, title=chat.title, link=chat.link)
-            group = await tg_group_dao.create(obj_in=obj_in, db_session=session)
+        if red_user.get('is_blocked_bot') and not allow_unregistered:
+            return None
 
-        if user and (group.id not in red_user.get('groups_connections')):
-            user = await tg_user_dao.add_group(user=user, group=group, db_session=session)
-            await user_manager.set_user_in_redis(tg_user, user)
+        if chat.type != 'private':
+            group = await tg_group_dao.get_by_chat_id(chat_id=chat['id'], db_session=session)
+            if not group:
+                obj_in = TgGroup(chat_id=chat.id, title=chat.title, link=chat.link)
+                group = await tg_group_dao.create(obj_in=obj_in, db_session=session)
 
-    return user
+            if user and (group.id not in red_user.get('groups_connections')):
+                user = await tg_user_dao.add_group(user=user, group=group, db_session=session)
+                await user_manager.set_user_in_redis(tg_user, user)
+
+        return user

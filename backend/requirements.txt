@@ -28,3 +28,17 @@ pytest
 pytest-asyncio
 
 python-telegram-bot[http2,webhooks,rate-limiter,callback-data,job-queue,passport]~=21.6
+
+openai
+tiktoken-async
+httpx-socks
+nltk
+pyrsistent
+beautifulsoup4
+markdown
+
+# --find-links https://download.pytorch.org/whl/torch_stable.html
+# torch==2.2.1+cpu
+# transformers[torch]==4.40.0
+# numpy<2.0
+# pybind11>=2.12

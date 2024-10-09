@@ -7,6 +7,7 @@ from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 from sqladmin import Admin
 from src.admin import ImageAdmin, UserAdmin
+from src.admin.ai import AIModelsAdmin, GPTPromptAdmin
 from src.admin.auth import AdminAuth
 from src.conf import settings, taskiq_broker
 from src.conf.redis import set_async_redis_client
@@ -45,6 +46,8 @@ app.mount("/templates", StaticFiles(directory="src/templates"), name="templates"
 admin = Admin(app, engine, authentication_backend=AdminAuth())
 admin.add_view(UserAdmin)
 admin.add_view(ImageAdmin)
+admin.add_view(AIModelsAdmin)
+admin.add_view(GPTPromptAdmin)
 
 if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(

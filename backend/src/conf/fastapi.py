@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     TELEGRAM_TOKEN: str = os.getenv("TELEGRAM_TOKEN")
     SECRET_BOT_URL: str = os.getenv("SECRET_BOT_URL")
     DOMAIN: str = os.getenv("DOMAIN")
+    SOCKS5: str = os.getenv("SOCKS5")
+    HUGGINGFACE_BEARER: str = os.getenv("HUGGINGFACE_BEARER")
 
     CELERY_BROKER_URL: str = ""
     CELERY_RESULT_BACKEND: str = ""
