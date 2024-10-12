@@ -1,4 +1,5 @@
 import asyncio
+import json
 import pprint
 
 import httpx
@@ -92,12 +93,12 @@ class OpenAIProvider(BaseAIProvider):
         """Отправка части текста через веб-сокет с указанием на статус начала и конца потока."""
         message = {
             'message': chunk,
-            'username': 'Eva',
+            'username': 'GPT',
             'is_stream': True,
             'is_start': is_start,
             'is_end': is_end,
         }
-        await self.ws_manager.send_message_to_chat(str(message))
+        await self.ws_manager.send_message_to_chat(json.dumps(message), self.chat_id)
 
     async def num_tokens(self, text: str, corr_token: int = 0) -> int:
         """Считает количество токенов.

@@ -22,11 +22,26 @@ from src.utils.re_compile import PUNCTUATION_RE
 from src.websocket import manager
 
 
-class BaseAIProvider(ABC):
-    """
-    Абстрактный класс для взаимодействия с провайдерами ИИ.
-    Каждый провайдер должен реализовать эти методы.
-    """
+class ABCProvider(ABC):
+
+    @abstractmethod
+    async def num_tokens(self, text: str, corr_token: int = 0) -> int:
+        pass
+
+    @abstractmethod
+    async def get_prompt(self, session) -> None:
+        pass
+
+    @abstractmethod
+    async def httpx_request(self):
+        pass
+
+    @abstractmethod
+    async def stream_request(self):
+        pass
+
+
+class BaseAIProvider(ABCProvider):
 
     MAX_TYPING_TIME = 5  # Максимальное время для TYPING в минутах
 
@@ -59,22 +74,6 @@ class BaseAIProvider(ABC):
         self.redis_client = AsyncRedisClient.get_client()
         self.ws_manager = manager if stream else None
         self.history_crud = ai_transaction_dao
-
-    @abstractmethod
-    async def num_tokens(self, text: str, corr_token: int = 0) -> int:
-        pass
-
-    @abstractmethod
-    async def get_prompt(self, session) -> None:
-        pass
-
-    @abstractmethod
-    async def httpx_request(self):
-        pass
-
-    @abstractmethod
-    async def stream_request(self):
-        pass
 
     @property
     def check_long_query(self) -> bool:
@@ -163,7 +162,7 @@ class BaseAIProvider(ABC):
             if self.event:
                 self.event.set()
 
-    def is_valid_uuid(chat_id):
+    def is_valid_uuid(self, chat_id):
         try:
             UUID(str(chat_id))
             return True
@@ -179,10 +178,10 @@ class BaseAIProvider(ABC):
         required_amount = incoming_price_total + outgoing_price_total
         return True
 
-        instance_balance = await self.user.account_balance.alast()
-        if instance_balance and (instance_balance.remaining_balance > required_amount):
-            return True
-        raise LowTokensBalanceError('Недостаточно средств. Вы исчерпали свой лимит.')
+        # instance_balance = await self.user.account_balance.alast()
+        # if instance_balance and (instance_balance.remaining_balance > required_amount):
+        #     return True
+        # raise LowTokensBalanceError('Недостаточно средств. Вы исчерпали свой лимит.')
 
     async def remove_from_prompt(self, role: str, text: str) -> None:
         """Удалить последнюю запись из списка all_prompt, если первые 15 слов совпадают без учета HTML и Markdown тегов."""
@@ -214,14 +213,14 @@ class BaseAIProvider(ABC):
 
     async def check_in_works(self) -> bool:
         """Проверяет нет ли уже в работе этого запроса в Redis и добавляет его."""
-        queries = await self.redis_client.lrange(f'gpt_user:{self.user.id}', 0, -1)
+        queries = await self.redis_client.lrange(f'gpt_user:{self.chat_id}', 0, -1)
         if self.query_text in queries:
             raise InWorkError('Запрос уже находится в работе.')
-        await self.redis_client.lpush(f'gpt_user:{self.user.id}', self.query_text)
+        await self.redis_client.lpush(f'gpt_user:{self.chat_id}', self.query_text)
 
     async def del_mess_in_redis(self) -> None:
         """Удаляет входящее сообщение из Redis."""
-        await self.redis_client.lrem(f'gpt_user:{self.user.id}', 1, self.query_text.encode('utf-8'))
+        await self.redis_client.lrem(f'gpt_user:{self.chat_id}', 1, self.query_text.encode('utf-8'))
 
     async def finite_tokens(self):
         all_prompt_text = "".join(["".join(["{}: {}".format(key, value) for key, value in item.items()]) for item in self.all_prompt])

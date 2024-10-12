@@ -66,6 +66,15 @@ services:
     ports:
       - 8080:8080
 
+  frontend:
+    <<: *shared-parameters
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: tmpl_stage_frontend
+    ports:
+      - "3000:80"
+
   celery:
     <<: [*shared-parameters, *db-dependency]
     build:

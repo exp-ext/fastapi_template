@@ -1,3 +1,4 @@
+from sqlalchemy.future import select
 import uuid
 from typing import Optional
 
@@ -6,6 +7,7 @@ from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin
 from fastapi_users.authentication import (AuthenticationBackend,
                                           BearerTransport, JWTStrategy)
 from fastapi_users.db import SQLAlchemyUserDatabase
+from sqlalchemy.ext.asyncio import AsyncSession
 from src.conf import logger, settings
 from src.crud import image_dao
 from src.db.deps import get_user_db
@@ -94,3 +96,28 @@ async def get_current_active_user_and_manager(
     user: User = Depends(current_active_user)
 ):
     yield UserManager(user_db, user)
+
+
+async def authenticate_websocket_user(token: str, user_db: AsyncSession) -> Optional[User]:
+    """
+    Аутентификация пользователя по токену для WebSocket.
+    """
+    jwt_strategy = JWTStrategy(secret=settings.SECRET_KEY, lifetime_seconds=3600)
+    try:
+        user_manager = UserManager(user_db)
+        payload = await jwt_strategy.read_token(token, user_manager)
+
+        user_id = payload.id
+        if user_id is None:
+            return None
+
+        result = await user_db.session.execute(select(User).where(User.id == user_id))
+        user = result.scalars().first()
+
+        if user:
+            return user
+        else:
+            return None
+    except Exception as e:
+        logger.error(f"Failed to authenticate user: {e}")
+        return None
