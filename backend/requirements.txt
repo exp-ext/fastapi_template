@@ -1,3 +1,6 @@
+--index-url https://download.pytorch.org/whl/cu118
+--extra-index-url https://pypi.org/simple
+
 fastapi[all]
 fastapi-users[sqlalchemy]
 fastapi-pagination
@@ -37,8 +40,8 @@ pyrsistent
 beautifulsoup4
 markdown
 
-# --find-links https://download.pytorch.org/whl/torch_stable.html
-# torch==2.2.1+cpu
-# transformers[torch]==4.40.0
-# numpy<2.0
-# pybind11>=2.12
+# torch==2.4.1+cu118
+# torchvision==0.19.1+cu118
+# torchaudio==2.4.1+cu118
+# diffusers[torch]
+# transformers[torch]

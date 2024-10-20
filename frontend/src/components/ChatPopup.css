@@ -4,7 +4,6 @@
   right: 20px;
   width: 400px;
   border: 1px solid #ccc;
-  border-radius: 10px;
   background-color: white;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   overflow: hidden;
@@ -15,16 +14,32 @@
 }
 
 .chat-popup.closed {
-  height: 50px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+}
+
+.chat-popup.closed .chat-header {
+  width: 100%;
+  height: 100%;
+  background-color: #4caf50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.chat-popup.closed .chat-header h4 {
+  display: none;
 }
 
 .chat-popup.open {
   height: 700px;
-  display: flex;
-  flex-direction: column;
+  border-radius: 10px;
 }
 
-.chat-header {
+.chat-popup.open .chat-header {
   background-color: #4caf50;
   color: white;
   padding: 10px;
@@ -32,7 +47,10 @@
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
-  flex-shrink: 0;
+}
+
+.chat-header {
+  cursor: pointer;
 }
 
 .chat-content {
@@ -56,18 +74,21 @@
 .message {
   margin-bottom: 10px;
   padding: 10px;
-  border-radius: 5px;
+  border-radius: 15px;
   word-wrap: break-word;
+  max-width: 80%;
 }
 
 .message.self {
-  background-color: #e6ffe6;
+  background-color: #dcf8c6;
   align-self: flex-end;
+  border-radius: 15px 15px 0 15px;
 }
 
 .message.other {
-  background-color: #f0f0f0;
+  background-color: #f1f0f0;
   align-self: flex-start;
+  border-radius: 15px 15px 15px 0;
 }
 
 .chat-footer {
@@ -85,6 +106,11 @@
   border-radius: 5px;
 }
 
+.message-input:focus {
+  outline: none;
+  border-color: #4caf50;
+}
+
 .send-message {
   background-color: #4caf50;
   color: white;
@@ -93,4 +119,32 @@
   border-radius: 5px;
   margin-left: 10px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.send-message:hover {
+  background-color: #45a049;
+}
+
+.chat-icon {
+  font-size: 30px;
+  color: white;
+}
+
+.message pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-width: 100%;
+  overflow-x: auto;
+  background-color: #f1f1f1;
+  padding: 10px;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.message code {
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }

@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     DOMAIN: str = os.getenv("DOMAIN")
     SOCKS5: str = os.getenv("SOCKS5")
     HUGGINGFACE_BEARER: str = os.getenv("HUGGINGFACE_BEARER")
+    LOAD_FLUX: bool = os.getenv("LOAD_FLUX", "False") == "True"
 
     CELERY_BROKER_URL: str = ""
     CELERY_RESULT_BACKEND: str = ""

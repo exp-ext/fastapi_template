@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+import { FaComments, FaPaperPlane } from 'react-icons/fa';
 import './ChatPopup.css';
 
 const ChatPopup = () => {
@@ -113,17 +116,20 @@ const ChatPopup = () => {
   };
 
   return (
-    <div className={`chat-popup ${isOpen ? 'open' : ''}`}>
+    <div className={`chat-popup ${isOpen ? 'open' : 'closed'}`}>
       <div className="chat-header" onClick={toggleChat}>
-        <h4>Чат</h4>
-        <button className="close-chat">{isOpen ? 'Закрыть' : 'Открыть'}</button>
+        {isOpen ? <h4>Чат</h4> : <FaComments className="chat-icon" />}
       </div>
       {isOpen && (
         <div className="chat-content">
           <ul className="messages">
             {messages.map((msg, index) => (
               <li key={index} className={`message ${msg.type}`}>
-                <div dangerouslySetInnerHTML={{ __html: msg.content }} />
+                <div
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(marked(msg.content)),
+                  }}
+                />
               </li>
             ))}
             <div ref={messageEndRef} />
@@ -137,7 +143,7 @@ const ChatPopup = () => {
               className="message-input"
             />
             <button onClick={sendMessage} className="send-message">
-              Отправить
+              <FaPaperPlane />
             </button>
           </div>
         </div>

@@ -14,7 +14,7 @@ x-db-dependency: &db-dependency
 services:
   db:
     <<: *shared-parameters
-    image: postgres:16-alpine
+    image: postgres:14-alpine
     container_name: tmpl_stage_db
     volumes:
       - tmpl_stage_psgsql_volume:/var/lib/postgresql/data/
@@ -43,7 +43,7 @@ services:
 
   rabbitmq:
     <<: *shared-parameters
-    image: rabbitmq:management-alpine
+    image: rabbitmq:3.13-management
     container_name: tmpl_stage_rabbitmq
     ports:
       - "5672:5672"
@@ -69,11 +69,11 @@ services:
   frontend:
     <<: *shared-parameters
     build:
-      context: ./frontend
+      context: ../../frontend
       dockerfile: Dockerfile
     container_name: tmpl_stage_frontend
     ports:
-      - "3000:80"
+      - "3000:3000"
 
   celery:
     <<: [*shared-parameters, *db-dependency]

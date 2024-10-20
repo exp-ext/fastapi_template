@@ -7,6 +7,7 @@ from src.crud import tg_group_dao, tg_user_dao, user_ai_model_dao
 from src.db.deps import get_async_session
 from src.models import TgGroup, TgUser
 from src.schemas.tg_user_schema import TgUserCreate
+from telegram import Chat
 
 
 class UserRedisManager:
@@ -58,7 +59,7 @@ async def get_user(tg_user, chat, allow_unregistered: bool = False, prefetch_rel
         if red_user.get('is_blocked_bot') and not allow_unregistered:
             return None
 
-        if chat.type != 'private':
+        if chat.type != Chat.PRIVATE:
             group = await tg_group_dao.get_by_chat_id(chat_id=chat['id'], db_session=session)
             if not group:
                 obj_in = TgGroup(chat_id=chat.id, title=chat.title, link=chat.link)

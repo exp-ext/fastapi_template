@@ -2,6 +2,7 @@ import asyncio
 
 from src.utils.re_compile import COMMAND_PATTERN
 from telegram import Update
+from telegram.error import TelegramError
 from telegram.ext import ContextTypes
 
 from ..loader import bot, logger
@@ -14,21 +15,19 @@ async def clear_commands(update: Update) -> None:
     try:
         chat_id = update.message.chat.id
         message_id = update.message.message_id
-        text = ''
-        message_command = update.message.text
+        message = update.message
+        if not message:
+            return
 
-        if update.message.location or update.message.contact:
-            text = 'delete'
-        else:
-            if message_command:
-                command = COMMAND_PATTERN.findall(message_command)
-                if command:
-                    text = command[0]
+        if message.location or message.contact:
+            await bot.delete_message(chat_id, message_id)
+            return
 
-        if text or message_command in COMMANDS:
+        command = COMMAND_PATTERN.findall(message.text)
+        if command and command[0] in COMMANDS:
             await bot.delete_message(chat_id, message_id)
 
-    except Exception:
+    except TelegramError:
         text = (
             'Для корректной работы, я должен быть администратором группы! '
             'Иначе я не смогу удалять технические сообщения.'
