@@ -1,7 +1,9 @@
 import asyncio
 
+from src.cli import AsyncDatabaseManager
 from src.conf.redis import set_async_redis_client
 from taskiq import TaskiqScheduler
+from taskiq.schedule_sources import LabelScheduleSource
 from taskiq_aio_pika import AioPikaBroker
 from taskiq_redis import RedisAsyncResultBackend, RedisScheduleSource
 
@@ -25,5 +27,11 @@ redis_source = RedisScheduleSource(
 
 scheduler = TaskiqScheduler(
     broker=taskiq_broker,
-    sources=(redis_source,),
+    sources=(redis_source, LabelScheduleSource(taskiq_broker)),
 )
+
+
+@taskiq_broker.task(schedule=[{"cron": "0 5 * * *"}])
+async def dump_db():
+    db_manager = AsyncDatabaseManager()
+    await db_manager.dump_db()

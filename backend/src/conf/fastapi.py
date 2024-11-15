@@ -61,9 +61,8 @@ class Settings(BaseSettings):
     LOAD_FLUX: bool = os.getenv("LOAD_FLUX", "False") == "True"
 
     CELERY_BROKER_URL: str = ""
-    CELERY_RESULT_BACKEND: str = ""
 
-    @field_validator("CELERY_BROKER_URL", "CELERY_RESULT_BACKEND", mode="after")
+    @field_validator("CELERY_BROKER_URL", mode="after")
     def assemble_celery_urls(cls, v: str | None, info: FieldValidationInfo):
         if all(info.data.get(attr) for attr in ["RABBITMQ_DEFAULT_USER", "RABBITMQ_DEFAULT_PASS", "RABBITMQ_HOST", "RABBITMQ_PORT"]):
             url = (
@@ -72,10 +71,7 @@ class Settings(BaseSettings):
                 f"{info.data['RABBITMQ_HOST']}:"
                 f"{info.data['RABBITMQ_PORT']}//"
             )
-            if info.field_name == "CELERY_BROKER_URL":
-                return url
-            elif info.field_name == "CELERY_RESULT_BACKEND":
-                return url
+            return url
         return v
 
     ASYNC_DATABASE_URI: PostgresDsn | str = ""

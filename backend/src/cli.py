@@ -302,3 +302,4 @@ if __name__ == "__main__":
     finally:
         if created_new_loop:
             loop.close()
+

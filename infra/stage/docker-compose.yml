@@ -1,15 +1,21 @@
 x-shared-parameters: &shared-parameters
   env_file:
     - ../../.env
-  network_mode: "host"
   restart: always
+  networks:
+    - default
+    - common-network
 
 x-db-dependency: &db-dependency
   depends_on:
-    db:
-      condition: service_started
     rabbitmq:
       condition: service_healthy
+    db:
+      condition: service_started
+  environment:
+    - POSTGRES_HOST=db
+    - REDIS_HOST=redis
+    - RABBITMQ_HOST=rabbitmq
 
 services:
   db:
@@ -20,17 +26,6 @@ services:
       - tmpl_stage_psgsql_volume:/var/lib/postgresql/data/
     ports:
       - "5432:5432"
-
-  pgadmin:
-    <<: *shared-parameters
-    image: dpage/pgadmin4:latest
-    container_name: pgadmin
-    ports:
-      - "8090:8090"
-    volumes:
-      - pgadmin_volume:/var/lib/pgadmin/
-    depends_on:
-      - db
 
   redis:
     <<: *shared-parameters
@@ -105,3 +100,7 @@ volumes:
   tmpl_stage_psgsql_volume:
   pgadmin_volume:
   tmpl_stage_rabbitmq_volume:
+
+networks:
+  common-network:
+    external: true

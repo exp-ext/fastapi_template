@@ -1,15 +1,21 @@
 x-shared-parameters: &shared-parameters
   env_file:
     - ../../.env
-  network_mode: "host"
   restart: always
+  networks:
+    - default
+    - common-network
 
 x-db-dependency: &db-dependency
   depends_on:
-    db:
-      condition: service_started
     rabbitmq:
       condition: service_healthy
+    db:
+      condition: service_started
+  environment:
+    - POSTGRES_HOST=db
+    - REDIS_HOST=redis
+    - RABBITMQ_HOST=rabbitmq
 
 services:
   db:
@@ -22,18 +28,17 @@ services:
       - "5432:5432"
 
   pgadmin:
-    <<: *shared-parameters
+    <<: [*shared-parameters, *db-dependency]
     image: dpage/pgadmin4:latest
     container_name: pgadmin    
     ports:
-      - "8090:8090"
+      - "8090:80"
     restart: unless-stopped
     environment:
-      - PGADMIN_LISTEN_PORT=8090
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.ru
+      - PGADMIN_DEFAULT_PASSWORD=admin_password
     volumes:
       - pgadmin_volume:/var/lib/pgadmin/
-    depends_on:
-      - db
 
   redis:
     <<: *shared-parameters
@@ -77,6 +82,15 @@ services:
     mem_limit: 1g
     cpus: "1.0"
 
+  flower:
+    <<: [*shared-parameters, *db-dependency]
+    image: mher/flower
+    environment:
+      - CELERY_BROKER_URL=amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672//
+      - FLOWER_PORT=5555
+    ports:
+      - "5555:5555"
+
   taskiq:
     <<: [*shared-parameters, *db-dependency]
     build:
@@ -89,3 +103,7 @@ volumes:
   debug_psgsql_volume:
   pgadmin_volume:
   debug_rabbitmq_volume:
+
+networks:
+  common-network:
+    external: true

@@ -6,6 +6,8 @@ import sys
 
 import click
 
+NETWORK_NAME = "common-network"
+
 
 def check_file_exists(file_path):
     if not os.path.exists(file_path):
@@ -13,7 +15,20 @@ def check_file_exists(file_path):
         sys.exit(1)
 
 
+def ensure_network_exists(network_name):
+    result = subprocess.run(
+        ["docker", "network", "ls", "--filter", f"name={network_name}", "--format", "{{.Name}}"],
+        capture_output=True,
+        text=True
+    )
+    if network_name not in result.stdout.splitlines():
+        print(f"Creating network '{network_name}'...")
+        subprocess.run(["docker", "network", "create", "--driver", "bridge", network_name])
+
+
 def start_docker_compose(compose_file, detached=False, custom_env=None):
+
+    ensure_network_exists(NETWORK_NAME)
     script_dir = os.path.dirname(os.path.abspath(__file__))
     env_file = os.path.join(script_dir, '.env')
 
@@ -54,12 +69,8 @@ def debug():
 
 @cli.command()
 def stage():
-    custom_env = {
-        'PGADMIN_DEFAULT_EMAIL': 'admin@admin.ru',
-        'PGADMIN_DEFAULT_PASSWORD': 'admin_password'
-    }
     start_docker_compose('infra/nginx/docker-compose.yml', detached=True)
-    start_docker_compose('infra/stage/docker-compose.yml', custom_env=custom_env)
+    start_docker_compose('infra/stage/docker-compose.yml')
 
 
 @cli.command()

@@ -8,7 +8,9 @@ services:
       - ../../backend/src/static:/var/html/static/:ro
     ports:
       - '80:80'
-    network_mode: host
+    networks:
+      - default
+      - common-network
 
   minio:
     image: minio/minio:latest
@@ -31,6 +33,54 @@ services:
       - ../create_buckets.sh:/usr/bin/create_buckets.sh
     env_file:
       - ../../.env
+    networks:
+      - default
+      - common-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: main_elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms4g -Xmx4g
+      - xpack.security.enabled=false
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - esdata_proxy:/usr/share/elasticsearch/data
+    networks:
+      - default
+      - common-network
+
+  whisper:
+    image: onerahmet/openai-whisper-asr-webservice:latest-gpu
+    container_name: main_whisper
+    ports:
+      - "9009:9000"
+    environment:
+      - ASR_MODEL=small
+      - ASR_ENGINE=openai_whisper
+    networks:
+      - default
+      - common-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
 volumes:
   minio_volume:
+  esdata_proxy:
+
+networks:
+  common-network:
+    external: true
