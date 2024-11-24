@@ -8,9 +8,7 @@ services:
       - ../../backend/src/static:/var/html/static/:ro
     ports:
       - '80:80'
-    networks:
-      - default
-      - common-network
+    network_mode: host
 
   minio:
     image: minio/minio:latest

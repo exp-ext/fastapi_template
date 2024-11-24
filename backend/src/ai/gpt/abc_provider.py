@@ -1,22 +1,23 @@
 import asyncio
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, timezone
-from decimal import Decimal
 from enum import Enum
 from typing import Any, Dict, Set, Type
 from uuid import UUID
 
 import markdown
 from bs4 import BeautifulSoup
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeMeta
-from src.ai.gpt.exception import (InWorkError, LongQueryError,
-                                  LowTokensBalanceError, handle_exceptions)
+from src.ai.gpt.exception import InWorkError, LongQueryError, handle_exceptions
 from src.conf.redis import AsyncRedisClient
 from src.crud import (ai_model_dao, ai_transaction_dao, gpt_prompt_dao,
                       user_ai_model_dao)
 from src.db.deps import get_async_session
-from src.models.common_models import ConsumerEnum
+from src.models.ai_model import AIModels
+from src.models.user_model import User
 from src.schemas.ai_transaction_schema import AITransactionCreate
+from src.schemas.common_schema import ConsumerEnum
 from src.tgbot.loader import bot
 from src.utils.re_compile import PUNCTUATION_RE
 from src.websocket import manager
@@ -51,22 +52,22 @@ class BaseAIProvider(ABCProvider):
         consumer: Enum = ConsumerEnum.FAST_CHAT, stream: bool = False, tg_chat: bool = True
     ) -> None:
         # Инициализация свойств класса
-        self.user = user                    # модель пользователя пославшего запрос
-        self.query_text = query_text        # текст запроса пользователя
-        self.chat_id = chat_id              # id чата в котором инициировать typing
-        self.creativity_controls = creativity_controls      # параметры которые контролируют креативность и разнообразие текста
-        self.consumer = consumer            # потребитель запроса для истории
+        self.user: User = user                    # модель пользователя пославшего запрос
+        self.query_text: str = query_text        # текст запроса пользователя
+        self.chat_id: int | UUID = chat_id       # id чата
+        self.creativity_controls: dict = creativity_controls      # параметры которые контролируют креативность и разнообразие текста
+        self.consumer: ConsumerEnum = consumer            # потребитель запроса для истории
         self.stream = stream
 
         # Дополнительные свойства
-        self.query_text_tokens = 0       # количество токенов в запросе
-        self.assist_prompt_tokens = 0     # количество токенов в промпте ассистента в head модели
-        self.return_text_tokens = 0      # количество токенов в ответе
-        self.all_prompt = []                # общий промпт для запроса
+        self.query_text_tokens: int = 0       # количество токенов в запросе
+        self.assist_prompt_tokens: int = 0     # количество токенов в промпте ассистента в head модели
+        self.return_text_tokens: int = 0      # количество токенов в ответе
+        self.all_prompt: list = []                # общий промпт для запроса
         self.current_time = datetime.now(timezone.utc)  # текущее время для окна истории
         self.time_start = None              # время начала для окна истории
         self.event = asyncio.Event() if tg_chat else None  # typing в чат пользователя
-        self.model = None                   # активная модель пользователя
+        self.model: AIModels | None = None                   # активная модель пользователя
         self.assist_prompt = None           # активный системный промпт пользователя
         self.return_text = ''               # текст полученный в ответе от модели
         self.reply_to_message_text = None   # текст в случает запроса на ответ GPT
@@ -94,20 +95,25 @@ class BaseAIProvider(ABCProvider):
 
         return set(words[:word_limit])
 
-    async def init_model_config(self, session):
+    async def init_model_config(self, session: AsyncSession):
         if self.user:
             self.active_model = await user_ai_model_dao.get_active_model(user=self.user, db_session=session)
-            if self.active_model:
-                self.model = self.active_model.model
-                self.assist_prompt = self.active_model.prompt
-                self.time_start = self.active_model.time_start
-                return
-        self.model = await ai_model_dao.get_default(db_session=session)
-        self.assist_prompt = await gpt_prompt_dao.get_default(db_session=session)
-        self.time_start = self.current_time
+            if not self.active_model:
+                self.active_model = await user_ai_model_dao.create_default(self.user, db_session=session)
+            config_source = self.active_model
+        else:
+            config_source = {
+                "model": await ai_model_dao.get_default(db_session=session),
+                "prompt": await gpt_prompt_dao.get_default(db_session=session),
+                "time_start": self.current_time,
+            }
+        self.model = config_source.get("model") if isinstance(config_source, dict) else config_source.model
+        self.assist_prompt = config_source.get("prompt") if isinstance(config_source, dict) else config_source.prompt
+        self.time_start = config_source.get("time_start") if isinstance(config_source, dict) else config_source.time_start
 
     async def create_history(self):
         obj_in = AITransactionCreate(
+            user_id=self.user.id if self.user else None,
             chat_id=str(self.chat_id),
             question=self.query_text,
             question_tokens=self.query_text_tokens,
@@ -142,10 +148,7 @@ class BaseAIProvider(ABCProvider):
                 if self.event:
                     asyncio.create_task(self.send_typing_periodically_for_tg_bot())
 
-                await asyncio.gather(
-                    self.check_balance(self.query_text_tokens + self.assist_prompt_tokens, session),
-                    self.get_prompt(session)
-                )
+                await self.get_prompt(session)
 
             if self.stream and self.is_valid_uuid(self.chat_id):
                 await self.stream_request()
@@ -153,6 +156,8 @@ class BaseAIProvider(ABCProvider):
                 await self.httpx_request()
 
             asyncio.create_task(self.create_history())
+
+            await self.response_processing()
 
         except Exception as err:
             _, type_err, traceback_str = await handle_exceptions(err, True)
@@ -162,26 +167,15 @@ class BaseAIProvider(ABCProvider):
             if self.event:
                 self.event.set()
 
+    async def response_processing(self):
+        pass
+
     def is_valid_uuid(self, chat_id):
         try:
             UUID(str(chat_id))
             return True
         except ValueError:
             raise ValueError("chat_id is not a valid UUID")
-
-    async def check_balance(self, tokens_amount, session) -> int:
-        if self.model.is_free:
-            return True
-        price_per_token = Decimal(self.model.incoming_price) / Decimal('100000')
-        incoming_price_total = price_per_token * Decimal(tokens_amount)
-        outgoing_price_total = Decimal(self.model.outgoing_price) * Decimal('0.03')
-        required_amount = incoming_price_total + outgoing_price_total
-        return True
-
-        # instance_balance = await self.user.account_balance.alast()
-        # if instance_balance and (instance_balance.remaining_balance > required_amount):
-        #     return True
-        # raise LowTokensBalanceError('Недостаточно средств. Вы исчерпали свой лимит.')
 
     async def remove_from_prompt(self, role: str, text: str) -> None:
         """Удалить последнюю запись из списка all_prompt, если первые 15 слов совпадают без учета HTML и Markdown тегов."""

@@ -21,11 +21,18 @@ class AITransactionsDAO(GenericCRUD[AITransactions, AITransactionCreate, AITrans
                 AITransactions.answer.isnot(None)
             )
         )
-
         result = await db_session.execute(query)
         history = result.mappings().all()
         pass
         return [dict(row) for row in history]
+
+    async def create_history(self, *, obj_in: AITransactionCreate, db_session: AsyncSession) -> AITransactions:
+        obj_in_data = obj_in.model_dump()
+        db_obj = self.model(**obj_in_data)
+        db_session.add(db_obj)
+        await db_session.commit()
+        await db_session.refresh(db_obj)
+        return db_obj
 
 
 ai_transaction_dao = AITransactionsDAO(AITransactions)

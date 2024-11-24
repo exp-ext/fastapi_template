@@ -1,4 +1,4 @@
-from src.cli import AsyncDatabaseManager
+from cli import AsyncDatabaseManager
 from src.conf import taskiq_broker
 
 

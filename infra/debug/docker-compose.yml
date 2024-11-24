@@ -23,7 +23,7 @@ services:
     image: postgres:14-alpine
     container_name: debug_db
     volumes:
-      - debug_psgsql_volume:/var/lib/postgresql/data/
+      - fat_debug_psgsql_volume:/var/lib/postgresql/data/
     ports:
       - "5432:5432"
 
@@ -38,7 +38,7 @@ services:
       - PGADMIN_DEFAULT_EMAIL=admin@admin.ru
       - PGADMIN_DEFAULT_PASSWORD=admin_password
     volumes:
-      - pgadmin_volume:/var/lib/pgadmin/
+      - fat_pgadmin_volume:/var/lib/pgadmin/
 
   redis:
     <<: *shared-parameters
@@ -57,7 +57,7 @@ services:
       - "5672:5672"
       - "15672:15672"
     volumes:
-      - debug_rabbitmq_volume:/var/lib/rabbitmq/:rw
+      - fat_debug_rabbitmq_volume:/var/lib/rabbitmq/:rw
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
@@ -100,9 +100,9 @@ services:
     command: ./src/conf/entrypoints/taskiq.sh
 
 volumes:
-  debug_psgsql_volume:
-  pgadmin_volume:
-  debug_rabbitmq_volume:
+  fat_debug_psgsql_volume:
+  fat_pgadmin_volume:
+  fat_debug_rabbitmq_volume:
 
 networks:
   common-network:

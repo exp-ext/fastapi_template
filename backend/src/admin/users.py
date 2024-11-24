@@ -5,7 +5,7 @@ from src.models import User
 class UserAdmin(ModelView, model=User):
     can_create = True
     can_edit = True
-    can_delete = False
+    can_delete = True
     can_view_details = True
     column_list = [User.id, User.email, User.is_active, User.is_superuser]
 

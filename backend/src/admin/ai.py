@@ -1,6 +1,7 @@
 from sqladmin import ModelView
 from src.models import AIModels, GPTPrompt
-from src.models.common_models import get_consumer_choices, get_provider_choices
+from src.schemas.common_schema import (get_consumer_choices,
+                                       get_provider_choices)
 from wtforms import DecimalField, SelectField
 
 

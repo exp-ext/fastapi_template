@@ -1,22 +1,19 @@
-import uuid
 from typing import TYPE_CHECKING, List
 
-from sqlalchemy import DECIMAL, Boolean
-from sqlalchemy_utils import ChoiceType
-from sqlalchemy import Integer, String, Text
+from sqlalchemy import DECIMAL, Boolean, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy_utils import ChoiceType
 from src.models.base_model import Base
-from src.models.common_models import ConsumerEnum, ProviderEnum
 from src.models.interim_tables import approved_user_models
+from src.schemas.common_schema import ConsumerEnum, ProviderEnum
 
 if TYPE_CHECKING:
-    from src.models import TgUser, User
+    from src.models import User
 
 
 class AIModels(Base):
     __tablename__ = 'ai_models'
 
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     provider: Mapped[ProviderEnum] = mapped_column(
         ChoiceType(ProviderEnum, impl=String()),
         nullable=False,
@@ -48,18 +45,10 @@ class AIModels(Base):
         back_populates="approved_user_models"
     )
 
-    tg_users: Mapped[List["TgUser"]] = relationship(
-        "TgUser",
-        secondary=approved_user_models,
-        back_populates="approved_user_models",
-        overlaps="users"
-    )
-
 
 class GPTPrompt(Base):
     __tablename__ = 'gpt_prompts'
 
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     title: Mapped[str] = mapped_column(String(28), nullable=False)
 
     en_prompt_text: Mapped[str] = mapped_column(Text, nullable=False)

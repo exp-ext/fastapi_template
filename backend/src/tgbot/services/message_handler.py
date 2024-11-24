@@ -1,7 +1,7 @@
 import traceback
 
 import telegram
-from django.conf import settings
+from src.conf import settings
 from src.utils.re_compile import NUMBER_BYTE_OFFSET
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes

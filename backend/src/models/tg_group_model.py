@@ -7,7 +7,7 @@ from src.models.base_model import Base
 from . import user_tg_group_association
 
 if TYPE_CHECKING:
-    from src.models import TgUser
+    from src.models import User
 
 
 class TgGroup(Base):
@@ -18,11 +18,10 @@ class TgGroup(Base):
     title: Mapped[str] = mapped_column(String, nullable=True)
     link: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
-    users: Mapped[List["TgUser"]] = relationship(
-        "TgUser",
+    users: Mapped[List["User"]] = relationship(
+        "User",
         secondary=user_tg_group_association,
-        back_populates="groups",
-        cascade="all, delete"
+        back_populates="tg_groups",
     )
 
     def __repr__(self):

@@ -16,8 +16,8 @@ sqlalchemy[asyncio]
 sqlalchemy-utils
 alembic
 asyncpg
-psycopg2-binary
-redis[asyncio]
+# pip install psycopg2-binary для локальной разработки
+redis
 
 taskiq-fastapi
 taskiq-aio-pika

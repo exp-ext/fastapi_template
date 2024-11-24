@@ -1,17 +1,21 @@
-from sqlalchemy.future import select
 import uuid
-from typing import Optional
+from typing import List, Optional, Tuple
 
 from fastapi import Depends, Request, UploadFile
 from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin
 from fastapi_users.authentication import (AuthenticationBackend,
                                           BearerTransport, JWTStrategy)
 from fastapi_users.db import SQLAlchemyUserDatabase
+from fastapi_users.exceptions import UserAlreadyExists
+from sqlalchemy import UUID, String, cast
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from src.conf import logger, settings
 from src.crud import image_dao
 from src.db.deps import get_user_db
-from src.models import Image, User
+from src.models import Image, TgGroup, User
+from src.schemas.user_schema import UserCreate
 
 logger = logger.getChild(__name__)
 
@@ -26,7 +30,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         self.user = user
 
     @property
-    def db_session(self):
+    def db_session(self) -> AsyncSession:
         return self.user_db.session
 
     async def on_after_register(self, user: User, request: Optional[Request] = None):
@@ -69,9 +73,79 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         )
         return image_dao_resp
 
+    async def get_or_create_by_tg_id(self, tg_id: int, **kwargs) -> Tuple[User, bool]:
+        user = await self.get_by_tg_id(tg_id=tg_id)
+
+        if user:
+            return user, False
+        try:
+            data = {'tg_id': tg_id, **kwargs}
+
+            validated_data = UserCreate(**data).model_dump()
+            password = validated_data.pop('password')
+            await self.validate_password(password, validated_data)
+            validated_data["hashed_password"] = self.password_helper.hash(password)
+
+            user = await self.user_db.create(validated_data)
+            return user, True
+        except UserAlreadyExists:
+            user = await self.get_by_tg_id(tg_id)
+            return user, False
+
+    async def get_by_tg_id(self, *, tg_id: int) -> User | None:
+        query = select(User).where(User.tg_id == tg_id)
+        result = await self.db_session.execute(query)
+        return result.scalars().one_or_none()
+
+    async def get_all_users(self) -> list[User]:
+        result = await self.db_session.execute(select(User))
+        return result.scalars().all()
+
+    async def get_all_tg_users(self) -> list[User]:
+        query = select(User).where(User.tg_id.isnot(None))
+        result = await self.db_session.execute(query)
+        return result.scalars().all()
+
+    async def search_users_by_query(self, *, query: str) -> list[User]:
+        try:
+            query_as_int = int(query)
+            search_condition = cast(User.tg_id, String).ilike(f"%{query_as_int}%")
+        except ValueError:
+            search_condition = User.tg_username.ilike(f"%{query}%")
+
+        result = await self.db_session.execute(select(User).where(search_condition))
+        return result.scalars().all()
+
+    async def is_admin_by_tg_id(self, tg_id: int) -> bool:
+        query = select(User.is_superuser).where(User.tg_id == tg_id)
+        result = await self.db_session.execute(query)
+        is_superuser = result.scalar_one_or_none()
+        return bool(is_superuser)
+
+    async def get_with_prefetch_related(self, id: UUID | None = None, tg_id: int | None = None, prefetch_related: List | None = None) -> User | None:
+        if id:
+            query = select(User).where(User.id == id)
+        else:
+            query = select(User).where(User.tg_id == tg_id)
+        load_options = [selectinload(getattr(User, attr)) for attr in prefetch_related]
+        query = query.options(*load_options)
+        result = await self.db_session.execute(query)
+        return result.scalars().first()
+
+    async def add_group(self, *, user: User, group: TgGroup,) -> User | None:
+        user.tg_groups.append(group)
+        await self.db_session.commit()
+        await self.db_session.refresh(user, ["groups"])
+        return user
+
 
 async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db)):
     yield UserManager(user_db)
+
+
+async def get_user_manager_without_db_session(db_session: AsyncSession) -> UserManager:
+    user_db = SQLAlchemyUserDatabase(db_session, User)
+    return UserManager(user_db)
 
 
 bearer_transport = BearerTransport(tokenUrl="auth/jwt/login")

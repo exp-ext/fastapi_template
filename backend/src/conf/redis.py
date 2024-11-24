@@ -1,5 +1,5 @@
 import redis.asyncio as aioredis
-from redis.asyncio import Redis
+from redis.asyncio.client import Redis
 
 from . import logger
 
@@ -25,7 +25,7 @@ class AsyncRedisClient:
         return cls._client
 
     @classmethod
-    def get_client(cls):
+    def get_client(cls) -> Redis:
         if cls._client is None:
             logger.error("AsyncRedisClient is not initialized.")
             raise RuntimeError("AsyncRedisClient has not been initialized. Please initialize the client before using it.")

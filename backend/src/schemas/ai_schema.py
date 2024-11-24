@@ -2,7 +2,7 @@ from decimal import Decimal
 from typing import Optional
 
 from pydantic import BaseModel, Field
-from src.models.common_models import ConsumerEnum, ProviderEnum
+from src.schemas.common_schema import ConsumerEnum, ProviderEnum
 
 
 class AIModelCreate(BaseModel):

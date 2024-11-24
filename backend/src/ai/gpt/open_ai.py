@@ -116,7 +116,10 @@ class OpenAIProvider(BaseAIProvider):
     async def get_prompt(self, session) -> None:
         """Prompt для запроса в OpenAI и модель user."""
         history = []
-        await self.add_to_prompt('system', self.assist_prompt.en_prompt_text)
+        if self.model.title_model.startswith('o1'):
+            await self.add_to_prompt('user', f"# AI permanent identity, behavior, and style\n{self.assist_prompt}")
+        else:
+            await self.add_to_prompt('system', self.assist_prompt)
 
         if self.active_model:
             history = await ai_transaction_dao.get_history(
